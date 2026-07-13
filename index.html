@@ -170,10 +170,14 @@
   }
   .transcript-body .final { color: var(--text); }
   .transcript-body .interim { color: var(--text3); font-style: italic; }
+  .q-block-done { margin-bottom: 10px; opacity: 0.8; }
+  .q-block-current { }
   .transcript-body .q-sep {
-    color: var(--text3); font-size: 12px; border-top: 1px solid var(--border);
-    margin: 12px 0 6px; padding-top: 8px; display: block;
+    font-size: 12px; font-weight: 600; color: var(--text2);
+    border-top: 1px solid var(--border);
+    margin: 10px 0 6px; padding-top: 8px; display: block;
   }
+  .q-block-done .q-sep { color: var(--text3); }
   .transcript-empty { text-align: center; padding: 40px 20px; color: var(--text3); }
   .transcript-empty svg { width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.3; }
 
@@ -612,14 +616,18 @@ function nextQuestionInSession() {
     duration: Math.max(0, elapsed)
   });
 
-  // Advance to next question (recording continues uninterrupted)
+  // Advance to next question
   sessionIndex++;
   // Reset transcripts for the new question
   transcripts = [];
   currentInterim = '';
   btnDownload.disabled = true;
 
-  // Re-render to show saved Qs + new Q header instead of blank
+  // Restart speech recognition for clean question boundary
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+
   renderTranscript();
   updateQuestionDisplay();
   showToast('已切换到下一题');
@@ -706,7 +714,8 @@ function initSpeechRecognition() {
   };
 
   recognition.onend = () => {
-    if (isRecording && !isPaused) {
+    // Only auto-restart if we're on a valid question (not past the end)
+    if (isRecording && !isPaused && sessionIndex < sessionQuestions.length) {
       try { recognition.start(); } catch(e) {}
     }
   };
@@ -716,23 +725,29 @@ function initSpeechRecognition() {
 
 function renderTranscript() {
   let html = '';
-  // Show previous question answers as separators
+  // Show completed (saved) questions
   for (let i = 0; i < sessionAnswers.length; i++) {
     const a = sessionAnswers[i];
+    html += `<div class="q-block-done">`;
+    html += `<span class="q-sep">✓ 第${i+1}题：${escapeHtml(a.question)}</span>`;
     if (a.transcript) {
-      html += `<span class="q-sep">── 第${i+1}题：${escapeHtml(a.question)} ──</span>`;
       html += `<span class="final">${escapeHtml(a.transcript)}</span> `;
+    } else {
+      html += `<span class="final" style="color:var(--text3)">（无转写内容）</span>`;
     }
+    html += `</div>`;
   }
-  // Current question
-  if (sessionQuestions[sessionIndex]) {
-    html += `<span class="q-sep">── 第${sessionIndex+1}题：${escapeHtml(sessionQuestions[sessionIndex])} ──</span>`;
-  }
-  for (const seg of transcripts) {
-    html += `<span class="final">${escapeHtml(seg.text)}</span> `;
-  }
-  if (currentInterim) {
-    html += `<span class="interim">${escapeHtml(currentInterim)}</span>`;
+  // Current question - only if not already saved
+  if (sessionIndex < sessionQuestions.length) {
+    html += `<div class="q-block-current">`;
+    html += `<span class="q-sep">● 第${sessionIndex+1}题：${escapeHtml(sessionQuestions[sessionIndex])}</span>`;
+    for (const seg of transcripts) {
+      html += `<span class="final">${escapeHtml(seg.text)}</span> `;
+    }
+    if (currentInterim) {
+      html += `<span class="interim">${escapeHtml(currentInterim)}</span>`;
+    }
+    html += `</div>`;
   }
   if (transcripts.length > 0 || currentInterim || sessionAnswers.length > 0) {
     transcriptEmpty.style.display = 'none';
@@ -792,7 +807,9 @@ async function startRecording() {
     isRecording = true;
     isPaused = false;
 
+    // Start fresh recognition session
     if (recognition) {
+      try { recognition.abort(); } catch(e) {}
       try { recognition.start(); } catch(e) {}
     }
 
