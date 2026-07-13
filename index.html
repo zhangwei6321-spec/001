@@ -738,7 +738,8 @@ function renderTranscript() {
     html += `</div>`;
   }
   // Current question - only if not already saved
-  if (sessionIndex < sessionQuestions.length) {
+  // Only show current Q if it hasn't been saved yet (sessionAnswers.length <= sessionIndex)
+  if (sessionIndex < sessionQuestions.length && sessionAnswers.length <= sessionIndex) {
     html += `<div class="q-block-current">`;
     html += `<span class="q-sep">● 第${sessionIndex+1}题：${escapeHtml(sessionQuestions[sessionIndex])}</span>`;
     for (const seg of transcripts) {
@@ -783,6 +784,11 @@ async function startRecording() {
     // Ensure camera preview is visible (not stuck on playback)
     previewVideo.style.display = '';
     playbackVideo.style.display = 'none';
+
+    // If restarting recording on a question already saved, remove stale entry
+    if (sessionAnswers.length > sessionIndex) {
+      sessionAnswers.pop();
+    }
 
     recordedChunks = [];
     transcripts = [];
