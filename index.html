@@ -569,6 +569,11 @@ function startSession() {
   sessionAnswers = [];
   sessionActive = true;
 
+  // Reset camera area for new session (in case previous playback was showing)
+  previewVideo.style.display = '';
+  playbackVideo.style.display = 'none';
+  cameraPlaceholder.style.display = '';
+
   btnStartSession.style.display = 'none';
   sessionSummary.style.display = 'none';
   updateQuestionDisplay();
@@ -760,6 +765,9 @@ async function startRecording() {
 
   try {
     if (!mediaStream) await initCamera();
+    // Ensure camera preview is visible (not stuck on playback)
+    previewVideo.style.display = '';
+    playbackVideo.style.display = 'none';
 
     recordedChunks = [];
     transcripts = [];
