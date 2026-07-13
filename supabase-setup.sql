@@ -44,3 +44,16 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- ========================================
+-- 5. 存储桶 RLS 策略（SQL Editor 中执行有完整权限）
+-- ========================================
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS users_select_own ON storage.objects;
+CREATE POLICY users_select_own ON storage.objects
+  FOR SELECT USING ((auth.uid())::text = owner_id);
+
+DROP POLICY IF EXISTS users_insert_own ON storage.objects;
+CREATE POLICY users_insert_own ON storage.objects
+  FOR INSERT WITH CHECK ((auth.uid())::text = owner_id);
