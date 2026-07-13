@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>协理员面试练习</title>
+<style>
+  :root {
+    --bg: #080b11; --surface: #10141d; --surface2: #181c28; --border: #232836;
+    --text: #e4e8f1; --text2: #8b90a5; --text3: #555a70;
+    --blue: #5b9cf5; --green: #34d399; --red: #f87171; --orange: #fb923c;
+    --yellow: #fbbf24; --purple: #a78bfa;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header .badge {
+    font-size: 11px; color: var(--text2); background: var(--surface2);
+    padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);
+  }
+  .browser-warn {
+    display: none; background: #2d1f0c; border-bottom: 1px solid #5c3d0e;
+    padding: 10px 24px; font-size: 13px; color: var(--yellow); text-align: center;
+  }
+  .browser-warn.show { display: block; }
+
+  /* Main Layout */
+  .main {
+    max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media (max-width: 860px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  /* Question Card */
+  .question-card {
+    grid-column: 1 / -1;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .question-card .q-icon { font-size: 22px; flex-shrink: 0; }
+  .question-card .q-text { flex: 1; font-size: 15px; line-height: 1.6; color: var(--text); }
+  .question-card .q-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* Camera Panel */
+  .camera-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .camera-view {
+    position: relative; background: #000; aspect-ratio: 4/3;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .camera-view video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .camera-placeholder {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; color: var(--text3);
+  }
+  .camera-placeholder svg { width: 48px; height: 48px; opacity: 0.35; }
+  .camera-placeholder span { font-size: 13px; }
+
+  /* Recording indicator */
+  .rec-indicator {
+    position: absolute; top: 12px; left: 12px; display: none; align-items: center;
+    gap: 6px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; color: var(--red);
+  }
+  .rec-indicator.active { display: flex; }
+  .rec-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--red);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Timer overlay */
+  .timer-overlay {
+    position: absolute; bottom: 12px; right: 12px;
+    font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: #fff; background: rgba(0,0,0,0.6); padding: 4px 12px; border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .timer-overlay.stopped { color: var(--text3); }
+
+  /* Controls */
+  .controls {
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px; padding: 10px 18px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent; transition: all 0.15s;
+    font-family: inherit; white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .btn-start { background: var(--green); color: #000; }
+  .btn-start:hover { background: #2dc48d; }
+  .btn-pause { background: var(--orange); color: #000; }
+  .btn-pause:hover { background: #e88626; }
+  .btn-stop { background: var(--red); color: #fff; }
+  .btn-stop:hover { background: #e05a5a; }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--border); color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--text3); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* Transcript Panel */
+  .transcript-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    display: flex; flex-direction: column; min-height: 320px;
+  }
+  .transcript-panel .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .panel-header h3 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .transcript-body {
+    flex: 1; padding: 16px; overflow-y: auto; font-size: 14px;
+    line-height: 1.8; color: var(--text2); min-height: 200px; max-height: 400px;
+  }
+  .transcript-body .final { color: var(--text); }
+  .transcript-body .interim { color: var(--text3); font-style: italic; }
+  .transcript-empty { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .transcript-empty svg { width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.3; }
+
+  /* History */
+  .history-section {
+    grid-column: 1 / -1;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+  .history-section h3 {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item {
+    display: flex; align-items: center; gap: 14px; padding: 10px 14px;
+    background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-item .h-time { font-weight: 600; color: var(--text); min-width: 50px; }
+  .history-item .h-date { color: var(--text3); flex: 1; font-size: 12px; }
+  .history-item .h-dur { color: var(--text2); margin-right: 4px; }
+  .history-empty { text-align: center; padding: 20px; color: var(--text3); font-size: 13px; }
+
+  /* Scrollbar */
+  .transcript-body::-webkit-scrollbar { width: 4px; }
+  .transcript-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    padding: 10px 20px; border-radius: 20px; font-size: 13px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎤 协理员面试练习</h1>
+  <span class="badge" id="browserBadge">检测中…</span>
+</div>
+<div class="browser-warn" id="browserWarn">
+  ⚠️ 当前浏览器不支持语音识别功能，建议使用 Chrome 或 Edge 获得完整体验。录制和计时功能正常可用。
+</div>
+
+<div class="main">
+  <!-- Question Card -->
+  <div class="question-card">
+    <span class="q-icon">📋</span>
+    <span class="q-text" id="questionText">点击右侧按钮获取面试题目</span>
+    <div class="q-actions">
+      <button class="btn btn-ghost btn-sm" onclick="nextQuestion()">换一题</button>
+    </div>
+  </div>
+
+  <!-- Camera Panel -->
+  <div class="camera-panel">
+    <div class="camera-view" id="cameraView">
+      <video id="previewVideo" autoplay playsinline muted></video>
+      <video id="playbackVideo" controls style="display:none"></video>
+      <div class="camera-placeholder" id="cameraPlaceholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M15 10l4.55-2.6A1 1 0 0121 8.27v7.46a1 1 0 01-1.45.88L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        <span>点击"开始录制"启动摄像头</span>
+      </div>
+      <div class="rec-indicator" id="recIndicator">
+        <span class="rec-dot"></span>录制中
+      </div>
+      <div class="timer-overlay stopped" id="timerDisplay">00:00</div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-start" id="btnStart" onclick="startRecording()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+        开始录制
+      </button>
+      <button class="btn btn-pause" id="btnPause" onclick="pauseRecording()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        暂停
+      </button>
+      <button class="btn btn-stop" id="btnStop" onclick="stopRecording()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+        停止录制
+      </button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" id="btnDownload" onclick="downloadTranscript()" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        导出文字稿
+      </button>
+    </div>
+  </div>
+
+  <!-- Transcript Panel -->
+  <div class="transcript-panel">
+    <div class="panel-header">
+      <h3>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        实时转写
+      </h3>
+      <span style="font-size:11px;color:var(--text3)" id="langLabel">zh-CN</span>
+    </div>
+    <div class="transcript-body" id="transcriptBody">
+      <div class="transcript-empty" id="transcriptEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <div>开始录制后，语音将实时转写为文字</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <h3>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      录制记录
+    </h3>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">暂无录制记录</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== State =====
+let mediaStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recognition = null;
+let isRecording = false;
+let isPaused = false;
+let timerSeconds = 0;
+let timerInterval = null;
+let transcripts = []; // { final: true, text: '' }
+let currentInterim = '';
+let recordingHistory = [];
+
+// ===== DOM =====
+const previewVideo = document.getElementById('previewVideo');
+const playbackVideo = document.getElementById('playbackVideo');
+const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+const recIndicator = document.getElementById('recIndicator');
+const timerDisplay = document.getElementById('timerDisplay');
+const transcriptBody = document.getElementById('transcriptBody');
+const transcriptEmpty = document.getElementById('transcriptEmpty');
+const historyList = document.getElementById('historyList');
+const btnStart = document.getElementById('btnStart');
+const btnPause = document.getElementById('btnPause');
+const btnStop = document.getElementById('btnStop');
+const btnDownload = document.getElementById('btnDownload');
+const browserBadge = document.getElementById('browserBadge');
+const browserWarn = document.getElementById('browserWarn');
+const toastEl = document.getElementById('toast');
+
+// ===== Question Bank =====
+const questions = [
+  '请做一下自我介绍。',
+  '你为什么想应聘协理员这个岗位？',
+  '你对我们单位了解多少？',
+  '请谈谈你最大的优点和缺点分别是什么。',
+  '你如何看待团队协作？请举例说明。',
+  '如果工作中与同事产生分歧，你会怎么处理？',
+  '请描述一次你成功解决问题的经历。',
+  '你如何应对工作中的压力和挫折？',
+  '你对加班有什么看法？',
+  '如果领导交给你一项你不熟悉的任务，你会怎么做？',
+  '你认为协理员最需要具备哪些素质？',
+  '请谈谈你对基层工作的理解。',
+  '你如何平衡工作与学习提升的关系？',
+  '如果你发现工作流程中有不合理之处，你会怎么提出？',
+  '你是如何规划自己的职业发展的？',
+  '请描述一次你服务群众或帮助他人的经历。',
+  '面对情绪激动的群众，你会如何处理？',
+  '你如何看待工作中的细节问题？',
+  '如果让你组织一次社区活动，你会怎么安排？',
+  '你还有什么问题想问我们吗？'
+];
+
+function nextQuestion() {
+  const idx = Math.floor(Math.random() * questions.length);
+  document.getElementById('questionText').textContent = questions[idx];
+}
+
+// ===== Speech Recognition =====
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    browserBadge.textContent = '⚠ 语音转写不支持';
+    browserWarn.classList.add('show');
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) {
+        transcripts.push({ final: true, text: result[0].transcript.trim() });
+      } else {
+        interim += result[0].transcript;
+      }
+    }
+    currentInterim = interim;
+    renderTranscript();
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error === 'no-speech') {
+      // harmless, restart
+      try { recognition.start(); } catch(e) {}
+      return;
+    }
+    if (event.error === 'aborted') return;
+    console.warn('Speech recognition error:', event.error);
+  };
+
+  recognition.onend = () => {
+    if (isRecording && !isPaused) {
+      try { recognition.start(); } catch(e) {}
+    }
+  };
+
+  browserBadge.textContent = '✓ 语音转写就绪';
+}
+
+function renderTranscript() {
+  let html = '';
+  for (const seg of transcripts) {
+    html += `<span class="final">${escapeHtml(seg.text)}</span> `;
+  }
+  if (currentInterim) {
+    html += `<span class="interim">${escapeHtml(currentInterim)}</span>`;
+  }
+  if (transcripts.length > 0 || currentInterim) {
+    transcriptEmpty.style.display = 'none';
+  }
+  transcriptBody.innerHTML = html || '';
+  transcriptBody.scrollTop = transcriptBody.scrollHeight;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== Camera =====
+async function initCamera() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    previewVideo.srcObject = mediaStream;
+    cameraPlaceholder.style.display = 'none';
+    browserBadge.textContent = '✓ 摄像头就绪';
+  } catch (err) {
+    console.error('Camera error:', err);
+    cameraPlaceholder.innerHTML = '<span>无法访问摄像头，请检查权限设置</span>';
+    browserBadge.textContent = '⚠ 摄像头未授权';
+    throw err;
+  }
+}
+
+// ===== Recording =====
+async function startRecording() {
+  if (isRecording) return;
+
+  try {
+    if (!mediaStream) await initCamera();
+
+    recordedChunks = [];
+    transcripts = [];
+    currentInterim = '';
+    timerSeconds = 0;
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : 'video/webm';
+    mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      saveRecording(url, blob);
+    };
+
+    mediaRecorder.start(1000);
+    isRecording = true;
+    isPaused = false;
+
+    // Start speech recognition
+    if (recognition) {
+      try { recognition.start(); } catch(e) {}
+    }
+
+    // Start timer
+    timerInterval = setInterval(() => {
+      timerSeconds++;
+      updateTimerDisplay();
+    }, 1000);
+
+    updateUI();
+    updateTimerDisplay();
+    transcriptEmpty.style.display = 'none';
+    showToast('录制已开始');
+  } catch (err) {
+    showToast('启动失败：' + err.message);
+  }
+}
+
+function pauseRecording() {
+  if (!isRecording) return;
+
+  if (isPaused) {
+    // Resume
+    mediaRecorder.resume();
+    if (recognition) {
+      try { recognition.start(); } catch(e) {}
+    }
+    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+    isPaused = false;
+    showToast('录制已继续');
+  } else {
+    // Pause
+    mediaRecorder.pause();
+    if (recognition) {
+      try { recognition.stop(); } catch(e) {}
+    }
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isPaused = true;
+    showToast('录制已暂停');
+  }
+  updateUI();
+}
+
+function stopRecording() {
+  if (!isRecording) return;
+
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+  clearInterval(timerInterval);
+  timerInterval = null;
+
+  mediaRecorder.stop();
+  isRecording = false;
+  isPaused = false;
+  updateUI();
+  showToast('录制已停止');
+}
+
+function updateUI() {
+  if (isRecording && !isPaused) {
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnStop.disabled = false;
+    btnPause.textContent = '';
+    btnPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 暂停';
+    recIndicator.classList.add('active');
+    timerDisplay.classList.remove('stopped');
+  } else if (isRecording && isPaused) {
+    btnStart.disabled = true;
+    btnPause.disabled = false;
+    btnStop.disabled = false;
+    btnPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> 继续';
+    recIndicator.classList.remove('active');
+    timerDisplay.classList.add('stopped');
+  } else {
+    btnStart.disabled = false;
+    btnPause.disabled = true;
+    btnStop.disabled = true;
+    btnPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 暂停';
+    recIndicator.classList.remove('active');
+    timerDisplay.classList.add('stopped');
+  }
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+  const s = (timerSeconds % 60).toString().padStart(2, '0');
+  timerDisplay.textContent = `${m}:${s}`;
+}
+
+// ===== Save & History =====
+function saveRecording(url, blob) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  const durStr = formatDuration(timerSeconds);
+
+  const transcriptText = transcripts.map(s => s.text).join('\n');
+
+  const record = {
+    id: Date.now(),
+    date: `${dateStr} ${timeStr}`,
+    duration: timerSeconds,
+    durStr,
+    url,
+    blob,
+    transcript: transcriptText,
+    question: document.getElementById('questionText').textContent
+  };
+
+  recordingHistory.unshift(record);
+  renderHistory();
+
+  // Auto-playback
+  previewVideo.style.display = 'none';
+  playbackVideo.style.display = 'block';
+  playbackVideo.src = url;
+  playbackVideo.style.display = 'block';
+
+  btnDownload.disabled = false;
+  // Store current transcript for download
+  btnDownload._transcript = transcriptText;
+  btnDownload._question = record.question;
+}
+
+function renderHistory() {
+  if (recordingHistory.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">暂无录制记录</div>';
+    return;
+  }
+
+  historyList.innerHTML = recordingHistory.map(r => `
+    <div class="history-item">
+      <span class="h-time">${r.durStr}</span>
+      <span class="h-date">${r.date}</span>
+      <button class="btn btn-ghost btn-sm" onclick="playHistory(${r.id})">回放</button>
+      <button class="btn btn-ghost btn-sm" onclick="downloadHistoryTranscript(${r.id})">导出文字</button>
+    </div>
+  `).join('');
+}
+
+function playHistory(id) {
+  const record = recordingHistory.find(r => r.id === id);
+  if (!record) return;
+
+  previewVideo.style.display = 'none';
+  playbackVideo.style.display = 'block';
+  playbackVideo.src = record.url;
+  playbackVideo.play();
+
+  // Load transcript
+  if (record.transcript) {
+    transcriptBody.innerHTML = `<span class="final">${escapeHtml(record.transcript)}</span>`;
+    transcriptEmpty.style.display = 'none';
+    btnDownload.disabled = false;
+    btnDownload._transcript = record.transcript;
+    btnDownload._question = record.question;
+  }
+
+  showToast('正在回放录制 ' + record.durStr);
+}
+
+function downloadTranscript() {
+  const text = btnDownload._transcript || '';
+  const question = btnDownload._question || '';
+  const now = new Date().toISOString().slice(0, 10);
+
+  let content = `面试练习文字稿 - ${now}\n`;
+  content += `题目：${question}\n`;
+  content += `${'─'.repeat(40)}\n\n`;
+  content += text || '（无转写内容）';
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `面试练习-${now}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('文字稿已下载');
+}
+
+function downloadHistoryTranscript(id) {
+  const record = recordingHistory.find(r => r.id === id);
+  if (!record) return;
+
+  let content = `面试练习文字稿\n`;
+  content += `题目：${record.question}\n`;
+  content += `时长：${record.durStr}\n`;
+  content += `日期：${record.date}\n`;
+  content += `${'─'.repeat(40)}\n\n`;
+  content += record.transcript || '（无转写内容）';
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `面试练习-${record.date.replace(/[\/\s:]/g,'-')}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('文字稿已下载');
+}
+
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._timeout);
+  toastEl._timeout = setTimeout(() => toastEl.classList.remove('show'), 2000);
+}
+
+// ===== Init =====
+initSpeechRecognition();
+nextQuestion();
+
+// Register service worker for PWA-like caching (optional)
+if ('serviceWorker' in navigator) {
+  // No SW needed for basic functionality
+}
+</script>
+</body>
+</html>
