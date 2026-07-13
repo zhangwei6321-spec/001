@@ -19,14 +19,14 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Header */
   .header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 24px; border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
   .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-  .header .badge {
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .badge {
     font-size: 11px; color: var(--text2); background: var(--surface2);
     padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);
   }
@@ -36,16 +36,46 @@
   }
   .browser-warn.show { display: block; }
 
-  /* Main Layout */
+  /* Settings Panel */
+  .settings-panel {
+    max-width: 1280px; margin: 0 auto; padding: 0 24px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    overflow: hidden; max-height: 0; transition: max-height 0.3s ease;
+  }
+  .settings-panel.open { max-height: 500px; }
+  .settings-inner { padding: 16px 0; }
+  .settings-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .settings-row:last-child { margin-bottom: 0; }
+  .settings-row label { font-size: 13px; color: var(--text2); min-width: 80px; flex-shrink: 0; }
+  .settings-row select, .settings-row input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: inherit;
+    outline: none;
+  }
+  .settings-row select:focus, .settings-row input:focus { border-color: var(--blue); }
+  .settings-row input[type="number"] { width: 70px; text-align: center; }
+  .settings-row input[type="file"] { display: none; }
+  .tag {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .tag-blue { background: rgba(91,156,245,0.15); color: var(--blue); }
+  .tag-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .tag-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .bank-questions-count { font-size: 11px; color: var(--text3); }
+
   .main {
     max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px;
     display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
   }
   @media (max-width: 860px) {
     .main { grid-template-columns: 1fr; }
+    .settings-row { flex-direction: column; align-items: flex-start; }
   }
 
-  /* Question Card */
   .question-card {
     grid-column: 1 / -1;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -53,10 +83,11 @@
     gap: 16px;
   }
   .question-card .q-icon { font-size: 22px; flex-shrink: 0; }
-  .question-card .q-text { flex: 1; font-size: 15px; line-height: 1.6; color: var(--text); }
+  .question-card .q-body { flex: 1; min-width: 0; }
+  .question-card .q-progress { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .question-card .q-text { font-size: 15px; line-height: 1.6; color: var(--text); }
   .question-card .q-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
-  /* Camera Panel */
   .camera-panel {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     overflow: hidden; display: flex; flex-direction: column;
@@ -65,17 +96,13 @@
     position: relative; background: #000; aspect-ratio: 4/3;
     display: flex; align-items: center; justify-content: center;
   }
-  .camera-view video {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-  }
+  .camera-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .camera-placeholder {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 12px; color: var(--text3);
   }
   .camera-placeholder svg { width: 48px; height: 48px; opacity: 0.35; }
   .camera-placeholder span { font-size: 13px; }
-
-  /* Recording indicator */
   .rec-indicator {
     position: absolute; top: 12px; left: 12px; display: none; align-items: center;
     gap: 6px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 20px;
@@ -87,20 +114,24 @@
     animation: pulse 1.2s infinite;
   }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-  /* Timer overlay */
   .timer-overlay {
     position: absolute; bottom: 12px; right: 12px;
     font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;
     color: #fff; background: rgba(0,0,0,0.6); padding: 4px 12px; border-radius: 6px;
-    letter-spacing: 1px;
+    letter-spacing: 1px; display: flex; align-items: center; gap: 6px;
   }
   .timer-overlay.stopped { color: var(--text3); }
+  .timer-overlay.countdown-warn { color: var(--orange); }
+  .timer-mode-tag {
+    font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px;
+    letter-spacing: 0;
+  }
+  .timer-mode-tag.up { background: rgba(52,211,153,0.2); color: var(--green); }
+  .timer-mode-tag.down { background: rgba(251,146,60,0.2); color: var(--orange); }
 
-  /* Controls */
   .controls {
     display: flex; align-items: center; gap: 10px; padding: 14px 16px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border); flex-wrap: wrap;
   }
   .btn {
     display: inline-flex; align-items: center; gap: 5px; padding: 10px 18px;
@@ -115,18 +146,20 @@
   .btn-pause:hover { background: #e88626; }
   .btn-stop { background: var(--red); color: #fff; }
   .btn-stop:hover { background: #e05a5a; }
+  .btn-next { background: var(--blue); color: #000; }
+  .btn-next:hover { background: #4a8de6; }
   .btn-ghost {
     background: transparent; border: 1px solid var(--border); color: var(--text2);
   }
   .btn-ghost:hover { border-color: var(--text3); color: var(--text); }
   .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-xs { padding: 4px 8px; font-size: 11px; }
 
-  /* Transcript Panel */
   .transcript-panel {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     display: flex; flex-direction: column; min-height: 320px;
   }
-  .transcript-panel .panel-header {
+  .panel-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; border-bottom: 1px solid var(--border);
   }
@@ -137,10 +170,13 @@
   }
   .transcript-body .final { color: var(--text); }
   .transcript-body .interim { color: var(--text3); font-style: italic; }
+  .transcript-body .q-sep {
+    color: var(--text3); font-size: 12px; border-top: 1px solid var(--border);
+    margin: 12px 0 6px; padding-top: 8px; display: block;
+  }
   .transcript-empty { text-align: center; padding: 40px 20px; color: var(--text3); }
   .transcript-empty svg { width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.3; }
 
-  /* History */
   .history-section {
     grid-column: 1 / -1;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -154,18 +190,16 @@
   .history-item {
     display: flex; align-items: center; gap: 14px; padding: 10px 14px;
     background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border);
-    font-size: 13px;
+    font-size: 13px; flex-wrap: wrap;
   }
   .history-item .h-time { font-weight: 600; color: var(--text); min-width: 50px; }
-  .history-item .h-date { color: var(--text3); flex: 1; font-size: 12px; }
+  .history-item .h-date { color: var(--text3); flex: 1; font-size: 12px; min-width: 120px; }
   .history-item .h-dur { color: var(--text2); margin-right: 4px; }
   .history-empty { text-align: center; padding: 20px; color: var(--text3); font-size: 13px; }
 
-  /* Scrollbar */
   .transcript-body::-webkit-scrollbar { width: 4px; }
   .transcript-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* Toast */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--surface2); color: var(--text); border: 1px solid var(--border);
@@ -173,27 +207,93 @@
     opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
   }
   .toast.show { opacity: 1; }
+
+  .warning-box {
+    grid-column: 1 / -1;
+    background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.2);
+    border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px;
+    color: var(--orange); display: flex; align-items: center; gap: 8px;
+  }
+  .session-summary {
+    grid-column: 1 / -1;
+    background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.2);
+    border-radius: var(--radius); padding: 16px 20px; text-align: center;
+  }
+  .session-summary h3 { font-size: 16px; margin-bottom: 6px; color: var(--green); }
+  .session-summary .summary-stats { font-size: 13px; color: var(--text2); line-height: 1.8; }
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>🎤 协理员面试练习</h1>
-  <span class="badge" id="browserBadge">检测中…</span>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" id="btnSettings" onclick="toggleSettings()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      设置
+    </button>
+    <span class="badge" id="browserBadge">检测中…</span>
+  </div>
 </div>
 <div class="browser-warn" id="browserWarn">
   ⚠️ 当前浏览器不支持语音识别功能，建议使用 Chrome 或 Edge 获得完整体验。录制和计时功能正常可用。
+</div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-inner">
+    <div class="settings-row">
+      <label>题库</label>
+      <select id="bankSelect" onchange="selectBank()" style="min-width:180px"></select>
+      <label class="btn btn-ghost btn-xs" style="cursor:pointer">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        上传题库(.txt)
+        <input type="file" accept=".txt" onchange="uploadBank(this)" style="display:none">
+      </label>
+      <button class="btn btn-ghost btn-xs" id="btnDeleteBank" onclick="deleteBank()" style="display:none" title="删除当前题库">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>
+      <span class="bank-questions-count" id="bankCount">20 题</span>
+    </div>
+    <div class="settings-row">
+      <label>每次答题数</label>
+      <input type="number" id="questionCount" min="1" max="50" value="3" onchange="saveConfig()">
+      <span style="font-size:11px;color:var(--text3)">道题</span>
+      <label style="margin-left:16px">计时模式</label>
+      <select id="timeMode" onchange="onTimeModeChange()" style="min-width:100px">
+        <option value="stopwatch">正计时</option>
+        <option value="countdown">倒计时</option>
+      </select>
+      <span id="timeLimitWrap">
+        <label>每题限时</label>
+        <input type="number" id="timeLimit" min="1" max="30" value="3" onchange="saveConfig()">
+        <span style="font-size:11px;color:var(--text3)">分钟</span>
+      </span>
+    </div>
+  </div>
 </div>
 
 <div class="main">
   <!-- Question Card -->
   <div class="question-card">
     <span class="q-icon">📋</span>
-    <span class="q-text" id="questionText">点击右侧按钮获取面试题目</span>
+    <div class="q-body">
+      <div class="q-progress" id="questionProgress"></div>
+      <div class="q-text" id="questionText">设置好题库和题目数量后，点击"开始练习"</div>
+    </div>
     <div class="q-actions">
-      <button class="btn btn-ghost btn-sm" onclick="nextQuestion()">换一题</button>
+      <button class="btn btn-next btn-sm" id="btnStartSession" onclick="startSession()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        开始练习
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btnNextQuestion" onclick="nextQuestionInSession()" style="display:none">
+        下一题 →
+      </button>
     </div>
   </div>
+
+  <!-- Session summary (hidden) -->
+  <div class="session-summary" id="sessionSummary" style="display:none"></div>
 
   <!-- Camera Panel -->
   <div class="camera-panel">
@@ -225,9 +325,9 @@
         停止录制
       </button>
       <span style="flex:1"></span>
-      <button class="btn btn-ghost btn-sm" id="btnDownload" onclick="downloadTranscript()" disabled>
+      <button class="btn btn-ghost btn-sm" id="btnDownload" onclick="downloadFullTranscript()" disabled>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        导出文字稿
+        导出全部文字稿
       </button>
     </div>
   </div>
@@ -264,7 +364,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== State =====
+// ============ State ============
 let mediaStream = null;
 let mediaRecorder = null;
 let recordedChunks = [];
@@ -273,29 +373,23 @@ let isRecording = false;
 let isPaused = false;
 let timerSeconds = 0;
 let timerInterval = null;
-let transcripts = []; // { final: true, text: '' }
+let transcripts = [];
 let currentInterim = '';
 let recordingHistory = [];
 
-// ===== DOM =====
-const previewVideo = document.getElementById('previewVideo');
-const playbackVideo = document.getElementById('playbackVideo');
-const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-const recIndicator = document.getElementById('recIndicator');
-const timerDisplay = document.getElementById('timerDisplay');
-const transcriptBody = document.getElementById('transcriptBody');
-const transcriptEmpty = document.getElementById('transcriptEmpty');
-const historyList = document.getElementById('historyList');
-const btnStart = document.getElementById('btnStart');
-const btnPause = document.getElementById('btnPause');
-const btnStop = document.getElementById('btnStop');
-const btnDownload = document.getElementById('btnDownload');
-const browserBadge = document.getElementById('browserBadge');
-const browserWarn = document.getElementById('browserWarn');
-const toastEl = document.getElementById('toast');
+// Session state
+let sessionQuestions = [];   // questions for this session
+let sessionIndex = 0;
+let sessionAnswers = [];     // { question, transcript, duration }
+let sessionActive = false;
 
-// ===== Question Bank =====
-const questions = [
+// Banks
+const BUILTIN_BANK = '内置题库';
+let questionBanks = {}; // { name: string[] }
+let currentBank = BUILTIN_BANK;
+let config = { questionCount: 3, timeMode: 'stopwatch', timeLimit: 3 };
+
+const builtinQuestions = [
   '请做一下自我介绍。',
   '你为什么想应聘协理员这个岗位？',
   '你对我们单位了解多少？',
@@ -318,21 +412,227 @@ const questions = [
   '你还有什么问题想问我们吗？'
 ];
 
-function nextQuestion() {
-  const idx = Math.floor(Math.random() * questions.length);
-  document.getElementById('questionText').textContent = questions[idx];
+// ============ DOM ============
+const previewVideo = document.getElementById('previewVideo');
+const playbackVideo = document.getElementById('playbackVideo');
+const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+const recIndicator = document.getElementById('recIndicator');
+const timerDisplay = document.getElementById('timerDisplay');
+const transcriptBody = document.getElementById('transcriptBody');
+const transcriptEmpty = document.getElementById('transcriptEmpty');
+const historyList = document.getElementById('historyList');
+const btnStart = document.getElementById('btnStart');
+const btnPause = document.getElementById('btnPause');
+const btnStop = document.getElementById('btnStop');
+const btnDownload = document.getElementById('btnDownload');
+const btnStartSession = document.getElementById('btnStartSession');
+const btnNextQuestion = document.getElementById('btnNextQuestion');
+const sessionSummary = document.getElementById('sessionSummary');
+const browserBadge = document.getElementById('browserBadge');
+const browserWarn = document.getElementById('browserWarn');
+const toastEl = document.getElementById('toast');
+const bankSelect = document.getElementById('bankSelect');
+const bankCount = document.getElementById('bankCount');
+const btnDeleteBank = document.getElementById('btnDeleteBank');
+const timeModeSelect = document.getElementById('timeMode');
+const timeLimitWrap = document.getElementById('timeLimitWrap');
+const timeLimitInput = document.getElementById('timeLimit');
+const questionCountInput = document.getElementById('questionCount');
+const questionProgress = document.getElementById('questionProgress');
+const questionText = document.getElementById('questionText');
+const settingsPanel = document.getElementById('settingsPanel');
+
+// ============ Bank Management ============
+function loadBanks() {
+  const saved = localStorage.getItem('interview_banks');
+  if (saved) {
+    try { questionBanks = JSON.parse(saved); } catch(e) { questionBanks = {}; }
+  }
+  if (!questionBanks[BUILTIN_BANK]) {
+    questionBanks[BUILTIN_BANK] = [...builtinQuestions];
+  }
+  const savedBank = localStorage.getItem('interview_currentBank');
+  if (savedBank && questionBanks[savedBank]) currentBank = savedBank;
 }
 
-// ===== Speech Recognition =====
+function saveBanks() {
+  const toSave = {};
+  for (const [k, v] of Object.entries(questionBanks)) {
+    if (k !== BUILTIN_BANK) toSave[k] = v;
+  }
+  localStorage.setItem('interview_banks', JSON.stringify(toSave));
+  localStorage.setItem('interview_currentBank', currentBank);
+}
+
+function selectBank() {
+  currentBank = bankSelect.value;
+  saveBanks();
+  refreshBankUI();
+}
+
+function uploadBank(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+      showToast('文件中没有找到有效题目');
+      return;
+    }
+    const name = file.name.replace(/\.txt$/i, '');
+    const bankName = name || '自定义题库';
+    questionBanks[bankName] = lines;
+    currentBank = bankName;
+    saveBanks();
+    refreshBankUI();
+    refreshBankSelect();
+    bankSelect.value = currentBank;
+    showToast(`已导入「${bankName}」共 ${lines.length} 题`);
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
+function deleteBank() {
+  if (currentBank === BUILTIN_BANK) return;
+  if (!confirm(`确定删除题库「${currentBank}」？此操作不可恢复。`)) return;
+  delete questionBanks[currentBank];
+  currentBank = BUILTIN_BANK;
+  saveBanks();
+  refreshBankUI();
+  refreshBankSelect();
+  showToast('题库已删除');
+}
+
+function refreshBankUI() {
+  const qs = questionBanks[currentBank] || [];
+  bankCount.textContent = `${qs.length} 题`;
+  btnDeleteBank.style.display = (currentBank === BUILTIN_BANK) ? 'none' : '';
+}
+
+function refreshBankSelect() {
+  bankSelect.innerHTML = Object.keys(questionBanks).map(k =>
+    `<option value="${escapeHtml(k)}" ${k === currentBank ? 'selected' : ''}>${escapeHtml(k)} (${(questionBanks[k]||[]).length}题)</option>`
+  ).join('');
+}
+
+// ============ Config ============
+function loadConfig() {
+  const saved = localStorage.getItem('interview_config');
+  if (saved) {
+    try { config = { ...config, ...JSON.parse(saved) }; } catch(e) {}
+  }
+  questionCountInput.value = config.questionCount;
+  timeModeSelect.value = config.timeMode;
+  timeLimitInput.value = config.timeLimit;
+  onTimeModeChange();
+}
+
+function saveConfig() {
+  config.questionCount = parseInt(questionCountInput.value) || 3;
+  config.timeMode = timeModeSelect.value;
+  config.timeLimit = parseInt(timeLimitInput.value) || 3;
+  localStorage.setItem('interview_config', JSON.stringify(config));
+}
+
+function onTimeModeChange() {
+  if (timeModeSelect.value === 'countdown') {
+    timeLimitWrap.style.display = '';
+  } else {
+    timeLimitWrap.style.display = 'none';
+  }
+  saveConfig();
+}
+
+// ============ Settings Toggle ============
+function toggleSettings() {
+  settingsPanel.classList.toggle('open');
+}
+
+// ============ Session ============
+function startSession() {
+  const bank = questionBanks[currentBank] || [];
+  if (bank.length === 0) {
+    showToast('当前题库为空');
+    return;
+  }
+  const count = Math.min(config.questionCount, bank.length);
+  // Shuffle and pick
+  const shuffled = [...bank].sort(() => Math.random() - 0.5);
+  sessionQuestions = shuffled.slice(0, count);
+  sessionIndex = 0;
+  sessionAnswers = [];
+  sessionActive = true;
+
+  btnStartSession.style.display = 'none';
+  btnNextQuestion.style.display = '';
+  sessionSummary.style.display = 'none';
+  updateQuestionDisplay();
+  showToast(`练习开始，共 ${count} 题`);
+}
+
+function updateQuestionDisplay() {
+  if (sessionIndex >= sessionQuestions.length) {
+    finishSession();
+    return;
+  }
+  const total = sessionQuestions.length;
+  questionProgress.textContent = `第 ${sessionIndex + 1} / ${total} 题`;
+  questionText.textContent = sessionQuestions[sessionIndex];
+  btnNextQuestion.style.display = 'none';
+  btnStart.disabled = false;
+}
+
+function nextQuestionInSession() {
+  // Move to next question
+  sessionIndex++;
+  // Reset recording state for new question
+  transcripts = [];
+  currentInterim = '';
+  timerSeconds = 0;
+  updateTimerDisplay();
+  transcriptBody.innerHTML = '';
+  transcriptEmpty.style.display = '';
+  previewVideo.style.display = '';
+  playbackVideo.style.display = 'none';
+  btnDownload.disabled = true;
+
+  updateQuestionDisplay();
+}
+
+function finishSession() {
+  sessionActive = false;
+  btnNextQuestion.style.display = 'none';
+  btnStartSession.style.display = '';
+  questionProgress.textContent = '';
+  questionText.textContent = '练习完成！点击"开始练习"再来一轮';
+
+  // Show summary
+  const totalTime = sessionAnswers.reduce((s, a) => s + a.duration, 0);
+  let summaryHTML = `<h3>🎉 练习完成</h3><div class="summary-stats">`;
+  summaryHTML += `共回答 ${sessionAnswers.length} 题 · 总用时 ${formatDuration(totalTime)}<br>`;
+  summaryHTML += `<button class="btn btn-ghost btn-sm" onclick="downloadFullTranscript()" style="margin-top:8px">导出全部文字稿</button>`;
+  summaryHTML += `</div>`;
+  sessionSummary.innerHTML = summaryHTML;
+  sessionSummary.style.display = '';
+
+  btnDownload.disabled = sessionAnswers.length === 0;
+  btnDownload._sessionData = { answers: sessionAnswers, totalTime };
+
+  showToast('本轮练习已完成');
+}
+
+// ============ Speech Recognition ============
 function initSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
     browserBadge.textContent = '⚠ 语音转写不支持';
     browserWarn.classList.add('show');
     return;
   }
-
-  recognition = new SpeechRecognition();
+  recognition = new SR();
   recognition.lang = 'zh-CN';
   recognition.continuous = true;
   recognition.interimResults = true;
@@ -340,11 +640,11 @@ function initSpeechRecognition() {
   recognition.onresult = (event) => {
     let interim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      if (result.isFinal) {
-        transcripts.push({ final: true, text: result[0].transcript.trim() });
+      const r = event.results[i];
+      if (r.isFinal) {
+        transcripts.push({ final: true, text: r[0].transcript.trim() });
       } else {
-        interim += result[0].transcript;
+        interim += r[0].transcript;
       }
     }
     currentInterim = interim;
@@ -353,12 +653,10 @@ function initSpeechRecognition() {
 
   recognition.onerror = (event) => {
     if (event.error === 'no-speech') {
-      // harmless, restart
       try { recognition.start(); } catch(e) {}
       return;
     }
     if (event.error === 'aborted') return;
-    console.warn('Speech recognition error:', event.error);
   };
 
   recognition.onend = () => {
@@ -372,26 +670,32 @@ function initSpeechRecognition() {
 
 function renderTranscript() {
   let html = '';
+  // Show previous question answers as separators
+  for (let i = 0; i < sessionAnswers.length; i++) {
+    const a = sessionAnswers[i];
+    if (a.transcript) {
+      html += `<span class="q-sep">── 第${i+1}题：${escapeHtml(a.question)} ──</span>`;
+      html += `<span class="final">${escapeHtml(a.transcript)}</span> `;
+    }
+  }
+  // Current question
+  if (sessionQuestions[sessionIndex]) {
+    html += `<span class="q-sep">── 第${sessionIndex+1}题：${escapeHtml(sessionQuestions[sessionIndex])} ──</span>`;
+  }
   for (const seg of transcripts) {
     html += `<span class="final">${escapeHtml(seg.text)}</span> `;
   }
   if (currentInterim) {
     html += `<span class="interim">${escapeHtml(currentInterim)}</span>`;
   }
-  if (transcripts.length > 0 || currentInterim) {
+  if (transcripts.length > 0 || currentInterim || sessionAnswers.length > 0) {
     transcriptEmpty.style.display = 'none';
   }
   transcriptBody.innerHTML = html || '';
   transcriptBody.scrollTop = transcriptBody.scrollHeight;
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// ===== Camera =====
+// ============ Camera ============
 async function initCamera() {
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -399,16 +703,19 @@ async function initCamera() {
     cameraPlaceholder.style.display = 'none';
     browserBadge.textContent = '✓ 摄像头就绪';
   } catch (err) {
-    console.error('Camera error:', err);
     cameraPlaceholder.innerHTML = '<span>无法访问摄像头，请检查权限设置</span>';
     browserBadge.textContent = '⚠ 摄像头未授权';
     throw err;
   }
 }
 
-// ===== Recording =====
+// ============ Recording ============
 async function startRecording() {
   if (isRecording) return;
+  if (!sessionActive) {
+    showToast('请先点击"开始练习"');
+    return;
+  }
 
   try {
     if (!mediaStream) await initCamera();
@@ -419,8 +726,7 @@ async function startRecording() {
     timerSeconds = 0;
 
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : 'video/webm';
+      ? 'video/webm;codecs=vp9' : 'video/webm';
     mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
 
     mediaRecorder.ondataavailable = (e) => {
@@ -437,21 +743,39 @@ async function startRecording() {
     isRecording = true;
     isPaused = false;
 
-    // Start speech recognition
     if (recognition) {
       try { recognition.start(); } catch(e) {}
     }
 
     // Start timer
+    if (config.timeMode === 'countdown') {
+      timerSeconds = config.timeLimit * 60;
+    } else {
+      timerSeconds = 0;
+    }
     timerInterval = setInterval(() => {
-      timerSeconds++;
+      if (config.timeMode === 'countdown') {
+        timerSeconds--;
+        if (timerSeconds <= 0) {
+          timerSeconds = 0;
+          stopRecording();
+          showToast('时间到，录制已自动停止');
+          if (sessionIndex + 1 < sessionQuestions.length) {
+            btnNextQuestion.style.display = '';
+            btnNextQuestion.textContent = '下一题 →';
+          }
+          return;
+        }
+      } else {
+        timerSeconds++;
+      }
       updateTimerDisplay();
     }, 1000);
 
     updateUI();
     updateTimerDisplay();
     transcriptEmpty.style.display = 'none';
-    showToast('录制已开始');
+    renderTranscript();
   } catch (err) {
     showToast('启动失败：' + err.message);
   }
@@ -459,22 +783,21 @@ async function startRecording() {
 
 function pauseRecording() {
   if (!isRecording) return;
-
   if (isPaused) {
-    // Resume
     mediaRecorder.resume();
-    if (recognition) {
-      try { recognition.start(); } catch(e) {}
-    }
-    timerInterval = setInterval(() => { timerSeconds++; updateTimerDisplay(); }, 1000);
+    if (recognition) { try { recognition.start(); } catch(e) {} }
+    timerInterval = setInterval(() => {
+      if (config.timeMode === 'countdown') {
+        timerSeconds--;
+        if (timerSeconds <= 0) { timerSeconds = 0; stopRecording(); return; }
+      } else { timerSeconds++; }
+      updateTimerDisplay();
+    }, 1000);
     isPaused = false;
     showToast('录制已继续');
   } else {
-    // Pause
     mediaRecorder.pause();
-    if (recognition) {
-      try { recognition.stop(); } catch(e) {}
-    }
+    if (recognition) { try { recognition.stop(); } catch(e) {} }
     clearInterval(timerInterval);
     timerInterval = null;
     isPaused = true;
@@ -485,18 +808,13 @@ function pauseRecording() {
 
 function stopRecording() {
   if (!isRecording) return;
-
-  if (recognition) {
-    try { recognition.stop(); } catch(e) {}
-  }
+  if (recognition) { try { recognition.stop(); } catch(e) {} }
   clearInterval(timerInterval);
   timerInterval = null;
-
   mediaRecorder.stop();
   isRecording = false;
   isPaused = false;
   updateUI();
-  showToast('录制已停止');
 }
 
 function updateUI() {
@@ -504,7 +822,6 @@ function updateUI() {
     btnStart.disabled = true;
     btnPause.disabled = false;
     btnStop.disabled = false;
-    btnPause.textContent = '';
     btnPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 暂停';
     recIndicator.classList.add('active');
     timerDisplay.classList.remove('stopped');
@@ -516,7 +833,7 @@ function updateUI() {
     recIndicator.classList.remove('active');
     timerDisplay.classList.add('stopped');
   } else {
-    btnStart.disabled = false;
+    btnStart.disabled = !sessionActive;
     btnPause.disabled = true;
     btnStop.disabled = true;
     btnPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 暂停';
@@ -526,44 +843,74 @@ function updateUI() {
 }
 
 function updateTimerDisplay() {
-  const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
-  const s = (timerSeconds % 60).toString().padStart(2, '0');
-  timerDisplay.textContent = `${m}:${s}`;
+  const abs = Math.abs(timerSeconds);
+  const m = Math.floor(abs / 60).toString().padStart(2, '0');
+  const s = (abs % 60).toString().padStart(2, '0');
+  let prefix = '';
+  if (config.timeMode === 'countdown') {
+    prefix = '<span class="timer-mode-tag down">倒</span> ';
+    if (timerSeconds <= 30 && isRecording) {
+      timerDisplay.classList.add('countdown-warn');
+    } else {
+      timerDisplay.classList.remove('countdown-warn');
+    }
+  } else {
+    prefix = '<span class="timer-mode-tag up">正</span> ';
+    timerDisplay.classList.remove('countdown-warn');
+  }
+  timerDisplay.innerHTML = prefix + `${m}:${s}`;
 }
 
-// ===== Save & History =====
+// ============ Save & History ============
 function saveRecording(url, blob) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  const durStr = formatDuration(timerSeconds);
-
+  const elapsed = config.timeMode === 'countdown'
+    ? config.timeLimit * 60 - timerSeconds
+    : timerSeconds;
+  const durStr = formatDuration(Math.max(0, elapsed));
   const transcriptText = transcripts.map(s => s.text).join('\n');
+
+  const currentQ = sessionQuestions[sessionIndex] || '';
+
+  // Save answer for session
+  sessionAnswers.push({
+    question: currentQ,
+    transcript: transcriptText,
+    duration: Math.max(0, elapsed)
+  });
 
   const record = {
     id: Date.now(),
     date: `${dateStr} ${timeStr}`,
-    duration: timerSeconds,
+    duration: Math.max(0, elapsed),
     durStr,
     url,
     blob,
     transcript: transcriptText,
-    question: document.getElementById('questionText').textContent
+    question: currentQ
   };
 
   recordingHistory.unshift(record);
   renderHistory();
 
-  // Auto-playback
   previewVideo.style.display = 'none';
   playbackVideo.style.display = 'block';
   playbackVideo.src = url;
-  playbackVideo.style.display = 'block';
 
   btnDownload.disabled = false;
-  // Store current transcript for download
-  btnDownload._transcript = transcriptText;
-  btnDownload._question = record.question;
+  btnDownload._sessionData = { answers: sessionAnswers, totalTime: 0 };
+
+  // Show next question button if there are more
+  if (sessionIndex + 1 < sessionQuestions.length) {
+    btnNextQuestion.style.display = '';
+    btnNextQuestion.textContent = '下一题 →';
+    showToast('录制已保存，点击"下一题"继续');
+  } else {
+    finishSession();
+    showToast('本轮练习已完成');
+  }
 }
 
 function renderHistory() {
@@ -571,13 +918,12 @@ function renderHistory() {
     historyList.innerHTML = '<div class="history-empty">暂无录制记录</div>';
     return;
   }
-
   historyList.innerHTML = recordingHistory.map(r => `
     <div class="history-item">
       <span class="h-time">${r.durStr}</span>
       <span class="h-date">${r.date}</span>
-      <button class="btn btn-ghost btn-sm" onclick="playHistory(${r.id})">回放</button>
-      <button class="btn btn-ghost btn-sm" onclick="downloadHistoryTranscript(${r.id})">导出文字</button>
+      <span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.question)}</span>
+      <button class="btn btn-ghost btn-xs" onclick="playHistory(${r.id})">回放</button>
     </div>
   `).join('');
 }
@@ -585,33 +931,36 @@ function renderHistory() {
 function playHistory(id) {
   const record = recordingHistory.find(r => r.id === id);
   if (!record) return;
-
   previewVideo.style.display = 'none';
   playbackVideo.style.display = 'block';
   playbackVideo.src = record.url;
   playbackVideo.play();
-
-  // Load transcript
   if (record.transcript) {
     transcriptBody.innerHTML = `<span class="final">${escapeHtml(record.transcript)}</span>`;
     transcriptEmpty.style.display = 'none';
-    btnDownload.disabled = false;
-    btnDownload._transcript = record.transcript;
-    btnDownload._question = record.question;
   }
-
-  showToast('正在回放录制 ' + record.durStr);
+  showToast('正在回放 ' + record.durStr);
 }
 
-function downloadTranscript() {
-  const text = btnDownload._transcript || '';
-  const question = btnDownload._question || '';
+function downloadFullTranscript() {
+  let data = btnDownload._sessionData;
+  if (!data || !data.answers || data.answers.length === 0) {
+    // Try to build from current state
+    data = { answers: sessionAnswers, totalTime: 0 };
+  }
   const now = new Date().toISOString().slice(0, 10);
-
   let content = `面试练习文字稿 - ${now}\n`;
-  content += `题目：${question}\n`;
+  content += `题库：${currentBank}\n`;
+  content += `共 ${data.answers.length} 题\n`;
   content += `${'─'.repeat(40)}\n\n`;
-  content += text || '（无转写内容）';
+
+  for (let i = 0; i < data.answers.length; i++) {
+    const a = data.answers[i];
+    content += `第${i + 1}题：${a.question}\n`;
+    content += `用时：${formatDuration(a.duration)}\n`;
+    content += `回答：\n${a.transcript || '（无转写内容）'}\n`;
+    content += `\n${'─'.repeat(40)}\n\n`;
+  }
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -623,48 +972,37 @@ function downloadTranscript() {
   showToast('文字稿已下载');
 }
 
-function downloadHistoryTranscript(id) {
-  const record = recordingHistory.find(r => r.id === id);
-  if (!record) return;
-
-  let content = `面试练习文字稿\n`;
-  content += `题目：${record.question}\n`;
-  content += `时长：${record.durStr}\n`;
-  content += `日期：${record.date}\n`;
-  content += `${'─'.repeat(40)}\n\n`;
-  content += record.transcript || '（无转写内容）';
-
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `面试练习-${record.date.replace(/[\/\s:]/g,'-')}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('文字稿已下载');
-}
-
+// ============ Helpers ============
 function formatDuration(sec) {
+  sec = Math.max(0, Math.floor(sec));
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return m > 0 ? `${m}分${s}秒` : `${s}秒`;
 }
 
-// ===== Toast =====
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('show');
   clearTimeout(toastEl._timeout);
-  toastEl._timeout = setTimeout(() => toastEl.classList.remove('show'), 2000);
+  toastEl._timeout = setTimeout(() => toastEl.classList.remove('show'), 2200);
 }
 
-// ===== Init =====
+// ============ Init ============
 initSpeechRecognition();
-nextQuestion();
+loadBanks();
+refreshBankSelect();
+refreshBankUI();
+loadConfig();
 
-// Register service worker for PWA-like caching (optional)
-if ('serviceWorker' in navigator) {
-  // No SW needed for basic functionality
+// Auto-open settings on first visit
+if (!localStorage.getItem('interview_config')) {
+  settingsPanel.classList.add('open');
 }
 </script>
 </body>
