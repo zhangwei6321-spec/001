@@ -438,7 +438,7 @@
 // SUPABASE REST API + AUTH + ENCRYPTION + SYNC
 // ================================================================
 const SUPABASE_URL = 'https://axhrtuskzezjkqyzbygq.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4aHJ0dXNremV6amtxeXpieWdjcSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzUyNDk1NjYxLCJleHAiOjIwNjgwNzE2NjF9.R5kA5Cxt6jPpNc8Hy7AmN4uAqsGgEzW8I5L9RlmCgfA';
+const SUPABASE_KEY = 'sb_publishable_LzpgXkyCO3Y-aBEMaIBHJQ_raw-mU1u';
 let accessToken = null;
 let refreshToken = null;
 let encryptionKey = null;
@@ -446,7 +446,7 @@ let currentUser = null;
 
 // ----- REST helpers -----
 function authHeaders() {
-  const h = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' };
+  const h = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' };
   if (accessToken) h['Authorization'] = 'Bearer ' + accessToken;
   return h;
 }
@@ -516,7 +516,7 @@ async function handleAuth() {
     refreshToken = data.refresh_token;
     currentUser = data.user;
     // Load encryption key from profiles
-    const { data: profile } = await sbApi('GET', `/rest/v1/profiles?id=eq.${currentUser.id}&select=encryption_key`);
+    const { data: profile } = await sbApi('GET', `/rest/v1/profiles?select=encryption_key`);
     if (profile && profile.length > 0 && profile[0].encryption_key) {
       encryptionKey = await importKey(profile[0].encryption_key);
       localStorage.setItem('enc_key', profile[0].encryption_key);
@@ -673,7 +673,7 @@ async function loadVideoForRecord(record) {
         encryptionKey = await importKey(localKey);
       } else {
         // Fetch key from profiles
-        const { data: profile } = await sbApi('GET', `/rest/v1/profiles?id=eq.${currentUser.id}&select=encryption_key`);
+        const { data: profile } = await sbApi('GET', `/rest/v1/profiles?select=encryption_key`);
         if (profile && profile.length > 0 && profile[0].encryption_key) {
           encryptionKey = await importKey(profile[0].encryption_key);
           localStorage.setItem('enc_key', profile[0].encryption_key);
