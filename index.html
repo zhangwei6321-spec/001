@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>协理员面试练习</title>
+
 <style>
   :root {
     --bg: #080b11; --surface: #10141d; --surface2: #181c28; --border: #232836;
@@ -226,8 +227,68 @@
   .session-summary h3 { font-size: 16px; margin-bottom: 6px; color: var(--green); }
   .session-summary .summary-stats { font-size: 13px; color: var(--text2); line-height: 1.8; }
 </style>
+
+  /* ===== Auth ===== */
+  .auth-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-overlay.hidden { display: none; }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 32px 28px; width: 360px; max-width: 90vw;
+  }
+  .auth-card h2 { font-size: 20px; margin-bottom: 20px; text-align: center; }
+  .auth-card .field { margin-bottom: 14px; }
+  .auth-card label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .auth-card input, .auth-card select {
+    width: 100%; padding: 10px 12px; border-radius: 6px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    font-size: 14px; font-family: inherit; outline: none;
+  }
+  .auth-card input:focus, .auth-card select:focus { border-color: var(--blue); }
+  .auth-card .gender-row { display: flex; gap: 10px; }
+  .auth-card .gender-row select { flex: 1; }
+  .auth-card .btn-full {
+    width: 100%; padding: 11px; border-radius: 6px; font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none; font-family: inherit; margin-top: 6px;
+  }
+  .auth-card .btn-primary { background: var(--blue); color: #fff; }
+  .auth-card .btn-primary:hover { background: #4a8de6; }
+  .auth-card .switch { text-align: center; margin-top: 14px; font-size: 13px; color: var(--text3); }
+  .auth-card .switch a { color: var(--blue); cursor: pointer; text-decoration: none; }
+  .auth-card .error { color: var(--red); font-size: 12px; margin-top: 6px; display: none; }
+  .user-bar {
+    display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2);
+  }
+  .user-bar .logout-btn {
+    background: none; border: 1px solid var(--border); color: var(--text3);
+    padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-family: inherit;
+  }
+  .user-bar .logout-btn:hover { border-color: var(--red); color: var(--red); }
+  .sync-badge {
+    font-size: 10px; padding: 2px 7px; border-radius: 3px;
+  }
+  .sync-badge.ok { background: rgba(52,211,153,0.15); color: var(--green); }
+  .sync-badge.err { background: rgba(248,113,113,0.15); color: var(--red); }
+
 </head>
 <body>
+
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2 id="authTitle">登录</h2>
+    <div class="field"><label>邮箱</label><input type="email" id="authEmail" placeholder="your@email.com"></div>
+    <div class="field"><label>密码</label><input type="password" id="authPassword" placeholder="至少6位"></div>
+    <div class="field" id="genderField" style="display:none">
+      <label>性别</label>
+      <select id="authGender"><option value="male">男</option><option value="female">女</option></select>
+    </div>
+    <div class="error" id="authError"></div>
+    <button class="btn-full btn-primary" id="authBtn" onclick="handleAuth()">登录</button>
+    <div class="switch"><a id="authSwitch" onclick="toggleAuthMode()">还没有账号？注册</a></div>
+  </div>
+</div>
 
 <div class="header">
   <h1>🎤 协理员面试练习</h1>
@@ -237,6 +298,11 @@
       设置
     </button>
     <span class="badge" id="browserBadge">检测中…</span>
+    <div class="user-bar" id="userBar" style="display:none">
+      <span id="userEmail"></span>
+      <span class="sync-badge ok" id="syncBadge">☁ 已同步</span>
+      <button class="logout-btn" onclick="handleLogout()">退出</button>
+    </div>
   </div>
 </div>
 <div class="browser-warn" id="browserWarn">
@@ -368,6 +434,265 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ================================================================
+// SUPABASE REST API + AUTH + ENCRYPTION + SYNC
+// ================================================================
+const SUPABASE_URL = 'https://axhrtuskzezjkqyzbygq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4aHJ0dXNremV6amtxeXpieWdjcSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzUyNDk1NjYxLCJleHAiOjIwNjgwNzE2NjF9.R5kA5Cxt6jPpNc8Hy7AmN4uAqsGgEzW8I5L9RlmCgfA';
+let accessToken = null;
+let refreshToken = null;
+let encryptionKey = null;
+let currentUser = null;
+
+// ----- REST helpers -----
+function authHeaders() {
+  const h = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' };
+  if (accessToken) h['Authorization'] = 'Bearer ' + accessToken;
+  return h;
+}
+
+async function sbApi(method, path, body) {
+  const opts = { method, headers: authHeaders() };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return { error: { message: err.msg || err.message || 'Request failed', status: res.status } };
+  }
+  return { data: await res.json().catch(() => null), error: null };
+}
+
+// ----- Auth UI -----
+let authMode = 'login';
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.getElementById('authTitle').textContent = authMode === 'login' ? '登录' : '注册';
+  document.getElementById('authBtn').textContent = authMode === 'login' ? '登录' : '注册';
+  document.getElementById('authSwitch').textContent = authMode === 'login' ? '还没有账号？注册' : '已有账号？登录';
+  document.getElementById('genderField').style.display = authMode === 'register' ? '' : 'none';
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function handleAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = '请填写邮箱和密码'; errEl.style.display = ''; return; }
+  if (password.length < 6) { errEl.textContent = '密码至少6位'; errEl.style.display = ''; return; }
+
+  if (authMode === 'register') {
+    const gender = document.getElementById('authGender').value;
+    const rawKey = await generateEncryptionKey();
+    const exportedKey = await exportKey(rawKey);
+    // Sign up via REST
+    const { data, error } = await sbApi('POST', '/auth/v1/signup', {
+      email, password,
+      data: { gender, encryption_key: exportedKey }
+    });
+    if (error) {
+      if (error.status === 422) {
+        errEl.textContent = '该邮箱已注册，请切换到登录';
+      } else {
+        errEl.textContent = error.message;
+      }
+      errEl.style.display = ''; return;
+    }
+    encryptionKey = rawKey;
+    localStorage.setItem('enc_key', exportedKey);
+    if (data.access_token) {
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      currentUser = data.user;
+      await onAuthSuccess(currentUser);
+      localStorage.setItem('sb_token', accessToken);
+      if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
+    }
+  } else {
+    // Sign in via REST
+    const { data, error } = await sbApi('POST', '/auth/v1/token?grant_type=password', { email, password });
+    if (error) { errEl.textContent = '登录失败：邮箱或密码错误'; errEl.style.display = ''; return; }
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token;
+    currentUser = data.user;
+    // Load encryption key from profiles
+    const { data: profile } = await sbApi('GET', `/rest/v1/profiles?id=eq.${currentUser.id}&select=encryption_key`);
+    if (profile && profile.length > 0 && profile[0].encryption_key) {
+      encryptionKey = await importKey(profile[0].encryption_key);
+      localStorage.setItem('enc_key', profile[0].encryption_key);
+    }
+    await onAuthSuccess(currentUser);
+  }
+}
+
+async function handleLogout() {
+  if (accessToken) {
+    await sbApi('POST', '/auth/v1/logout');
+  }
+  accessToken = null;
+  refreshToken = null;
+  encryptionKey = null;
+  currentUser = null;
+  localStorage.removeItem('enc_key');
+  recordingHistory = [];
+  renderHistory();
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.getElementById('userBar').style.display = 'none';
+}
+
+async function onAuthSuccess(user) {
+  if (!user) return;
+  currentUser = user;
+  document.getElementById('authOverlay').classList.add('hidden');
+  document.getElementById('userBar').style.display = '';
+  document.getElementById('userEmail').textContent = user.email;
+  await loadRecordingsFromCloud();
+}
+
+// ----- Encryption (Web Crypto API, AES-GCM) -----
+async function generateEncryptionKey() {
+  return await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+}
+
+async function exportKey(key) {
+  const raw = await crypto.subtle.exportKey('raw', key);
+  return btoa(String.fromCharCode(...new Uint8Array(raw)));
+}
+
+async function importKey(base64Key) {
+  const raw = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+  return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptText(key, plaintext) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  return {
+    iv: btoa(String.fromCharCode(...iv)),
+    data: btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+  };
+}
+
+async function decryptText(key, ivB64, dataB64) {
+  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+  const ciphertext = Uint8Array.from(atob(dataB64), c => c.charCodeAt(0));
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  return new TextDecoder().decode(decrypted);
+}
+
+// ----- Cloud Sync -----
+async function uploadRecordingToCloud(record) {
+  if (!encryptionKey || !currentUser) return;
+  try {
+    const transcriptEnc = await encryptText(encryptionKey, record.transcript || '');
+    const metadata = JSON.stringify({
+      question: record.question, duration: record.duration,
+      durStr: record.durStr, date: record.date, sessionAnswers: record.sessionAnswers
+    });
+    const metadataEnc = await encryptText(encryptionKey, metadata);
+
+    // Upload video
+    let videoPath = null;
+    if (record.blob && record.blob.size > 0) {
+      const fileName = `${currentUser.id}/${record.id}.webm`;
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${fileName}`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'video/webm' },
+        body: record.blob
+      });
+      if (res.ok) videoPath = fileName;
+    }
+
+    // Insert row
+    const { error } = await sbApi('POST', '/rest/v1/recordings', {
+      id: record.id, user_id: currentUser.id,
+      encrypted_transcript: transcriptEnc.data,
+      encrypted_metadata: metadataEnc.data,
+      video_storage_path: videoPath,
+      iv: transcriptEnc.iv,
+      created_at: new Date().toISOString()
+    });
+    if (error) console.warn('Sync insert error:', error);
+    else document.getElementById('syncBadge').className = 'sync-badge ok';
+  } catch (e) {
+    console.warn('Sync error:', e);
+    document.getElementById('syncBadge').className = 'sync-badge err';
+  }
+}
+
+async function loadRecordingsFromCloud() {
+  if (!encryptionKey || !currentUser) return;
+  try {
+    const { data: rows, error } = await sbApi('GET',
+      `/rest/v1/recordings?select=*&user_id=eq.${currentUser.id}&order=created_at.desc`);
+    if (error) { console.warn('Load error:', error); return; }
+    recordingHistory = [];
+    for (const row of (rows || [])) {
+      try {
+        const transcript = await decryptText(encryptionKey, row.iv, row.encrypted_transcript);
+        const metadataStr = row.encrypted_metadata ? await decryptText(encryptionKey, row.iv, row.encrypted_metadata) : '{}';
+        const meta = JSON.parse(metadataStr);
+        recordingHistory.push({
+          id: row.id, date: meta.date || '', duration: meta.duration || 0,
+          durStr: meta.durStr || '', transcript: transcript,
+          question: meta.question || '', sessionAnswers: meta.sessionAnswers || [],
+          url: row.video_storage_path || null, blob: null, _storagePath: row.video_storage_path
+        });
+      } catch (e) { console.warn('Decrypt error:', e); }
+    }
+    renderHistory();
+  } catch (e) { console.warn('Load error:', e); }
+}
+
+async function loadVideoForRecord(record) {
+  if (record._storagePath && !record.blob) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${record._storagePath}`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
+      });
+      if (res.ok) record.blob = await res.blob();
+    } catch(e) {}
+  }
+  return record;
+}
+
+// ----- Init -----
+(async function initAuth() {
+  // Check existing session from stored token
+  const savedToken = localStorage.getItem('sb_token');
+  const savedRefresh = localStorage.getItem('sb_refresh');
+  if (savedToken) {
+    accessToken = savedToken;
+    refreshToken = savedRefresh;
+    const { data: userData } = await sbApi('GET', '/auth/v1/user');
+    if (userData && userData.id) {
+      currentUser = userData;
+      const localKey = localStorage.getItem('enc_key');
+      if (localKey) {
+        encryptionKey = await importKey(localKey);
+      } else {
+        // Fetch key from profiles
+        const { data: profile } = await sbApi('GET', `/rest/v1/profiles?id=eq.${currentUser.id}&select=encryption_key`);
+        if (profile && profile.length > 0 && profile[0].encryption_key) {
+          encryptionKey = await importKey(profile[0].encryption_key);
+          localStorage.setItem('enc_key', profile[0].encryption_key);
+        }
+      }
+      await onAuthSuccess(currentUser);
+      // Store tokens for next visit
+      localStorage.setItem('sb_token', accessToken);
+      if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
+      return;
+    }
+  }
+  document.getElementById('authOverlay').classList.remove('hidden');
+})();
+
+// ================================================================
+// ORIGINAL APP CODE (modified for cloud sync)
+// ================================================================
+
 // ============ State ============
 let mediaStream = null;
 let mediaRecorder = null;
@@ -992,6 +1317,8 @@ function saveRecording(url, blob) {
 
   showSessionComplete();
   showToast('录制已保存');
+  // Sync to cloud
+  if (currentUser) uploadRecordingToCloud(record);
 }
 
 function renderHistory() {
@@ -1010,12 +1337,17 @@ function renderHistory() {
   `).join('');
 }
 
-function playHistory(id) {
-  const record = recordingHistory.find(r => r.id === id);
+async function playHistory(id) {
+  let record = recordingHistory.find(r => r.id === id);
   if (!record) return;
+  record = await loadVideoForRecord(record);
   previewVideo.style.display = 'none';
   playbackVideo.style.display = 'block';
-  playbackVideo.src = record.url;
+  if (record.blob) {
+    playbackVideo.src = URL.createObjectURL(record.blob);
+  } else if (record.url) {
+    playbackVideo.src = record.url;
+  }
   playbackVideo.play();
   if (record.transcript) {
     transcriptBody.innerHTML = `<span class="final">${escapeHtml(record.transcript)}</span>`;
@@ -1024,12 +1356,11 @@ function playHistory(id) {
   showToast('正在回放 ' + record.durStr);
 }
 
-function downloadHistoryVideo(id) {
-  const record = recordingHistory.find(r => r.id === id);
-  if (!record || !record.blob) {
-    showToast('视频数据不可用');
-    return;
-  }
+async function downloadHistoryVideo(id) {
+  let record = recordingHistory.find(r => r.id === id);
+  if (!record) { showToast('记录不存在'); return; }
+  record = await loadVideoForRecord(record);
+  if (!record.blob) { showToast('视频数据不可用'); return; }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(record.blob);
   a.download = '面试练习-' + record.date.replace(/[\/\s:]/g, '-') + '.webm';
