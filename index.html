@@ -543,7 +543,8 @@ function onTimeModeChange() {
     document.getElementById('timeLimitLabel').textContent = '总时长';
   } else {
     timeLimitWrap.style.display = 'none';
-    document.getElementById('timeLimitLabel').textContent = '每题限时';.style.display = 'none';
+    document.getElementById('timeLimitLabel').textContent = '每题限时';
+timeLimitWrap.style.display = 'none';
   }
   saveConfig();
 }
@@ -582,7 +583,6 @@ function updateQuestionDisplay() {
   const total = sessionQuestions.length;
   questionProgress.textContent = `第 ${sessionIndex + 1} / ${total} 题`;
   questionText.textContent = sessionQuestions[sessionIndex];
-  btnNextQuestion.style.display = 'none';
   btnStart.disabled = false;
   // Show next button if currently recording (so user can advance without stopping)
   if (isRecording) {
