@@ -592,9 +592,12 @@ function updateQuestionDisplay() {
 }
 
 function nextQuestionInSession() {
-  // Save current question's transcript to sessionAnswers
+  // Save current question's transcript including pending interim text
   const currentQ = sessionQuestions[sessionIndex] || '';
-  const transcriptText = transcripts.map(s => s.text).join('\n');
+  let transcriptText = transcripts.map(s => s.text).join('\n');
+  if (currentInterim) {
+    transcriptText += (transcriptText ? '\n' : '') + '【未确认】' + currentInterim;
+  }
   const elapsed = config.timeMode === 'countdown'
     ? (config.timeLimit * 60) - timerSeconds
     : timerSeconds;
@@ -606,13 +609,13 @@ function nextQuestionInSession() {
 
   // Advance to next question (recording continues uninterrupted)
   sessionIndex++;
-  // Reset transcripts for the new question only, recording keeps going
+  // Reset transcripts for the new question
   transcripts = [];
   currentInterim = '';
-  transcriptBody.innerHTML = '';
-  transcriptEmpty.style.display = '';
   btnDownload.disabled = true;
 
+  // Re-render to show saved Qs + new Q header instead of blank
+  renderTranscript();
   updateQuestionDisplay();
   showToast('已切换到下一题');
 }
@@ -622,7 +625,10 @@ function finishSession() {
   if (isRecording) {
     if (sessionIndex < sessionQuestions.length && sessionAnswers.length === sessionIndex) {
       const currentQ = sessionQuestions[sessionIndex] || '';
-      const transcriptText = transcripts.map(s => s.text).join('\n');
+      let transcriptText = transcripts.map(s => s.text).join('\n');
+      if (currentInterim) {
+        transcriptText += (transcriptText ? '\n' : '') + '【未确认】' + currentInterim;
+      }
       const elapsed = config.timeMode === 'countdown'
         ? (config.timeLimit * 60) - timerSeconds
         : timerSeconds;
@@ -845,7 +851,10 @@ function stopRecording() {
   // Save current question transcript if not saved yet (e.g. stopping mid-question)
   if (sessionIndex < sessionQuestions.length && sessionAnswers.length === sessionIndex) {
     const currentQ = sessionQuestions[sessionIndex] || '';
-    const transcriptText = transcripts.map(s => s.text).join('\n');
+    let transcriptText = transcripts.map(s => s.text).join('\n');
+    if (currentInterim) {
+      transcriptText += (transcriptText ? '\n' : '') + '【未确认】' + currentInterim;
+    }
     const elapsed = config.timeMode === 'countdown'
       ? (config.timeLimit * 60) - timerSeconds
       : timerSeconds;
