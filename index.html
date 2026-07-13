@@ -474,10 +474,12 @@ function toggleAuthMode() {
 }
 
 async function handleAuth() {
+  try {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const errEl = document.getElementById('authError');
   errEl.style.display = 'none';
+  console.log('[auth] mode:', authMode, 'email:', email);
   if (!email || !password) { errEl.textContent = '请填写邮箱和密码'; errEl.style.display = ''; return; }
   if (password.length < 6) { errEl.textContent = '密码至少6位'; errEl.style.display = ''; return; }
 
@@ -522,6 +524,12 @@ async function handleAuth() {
       localStorage.setItem('enc_key', profile[0].encryption_key);
     }
     await onAuthSuccess(currentUser);
+  }
+  } catch(e) {
+    console.error('[auth] error:', e);
+    const errEl = document.getElementById('authError');
+    errEl.textContent = '错误: ' + (e.message || e);
+    errEl.style.display = '';
   }
 }
 
