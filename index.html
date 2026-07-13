@@ -982,6 +982,7 @@ function renderHistory() {
       <span class="h-date">${r.date}</span>
       <span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.question)}</span>
       <button class="btn btn-ghost btn-xs" onclick="playHistory(${r.id})">回放</button>
+      <button class="btn btn-ghost btn-xs" onclick="downloadHistoryVideo(${r.id})">下载</button>
     </div>
   `).join('');
 }
@@ -998,6 +999,19 @@ function playHistory(id) {
     transcriptEmpty.style.display = 'none';
   }
   showToast('正在回放 ' + record.durStr);
+}
+
+function downloadHistoryVideo(id) {
+  const record = recordingHistory.find(r => r.id === id);
+  if (!record || !record.blob) {
+    showToast('视频数据不可用');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(record.blob);
+  a.download = '面试练习-' + record.date.replace(/[\/\s:]/g, '-') + '.webm';
+  a.click();
+  showToast('视频下载中');
 }
 
 function downloadFullTranscript() {
