@@ -265,7 +265,7 @@
         <option value="countdown">倒计时</option>
       </select>
       <span id="timeLimitWrap">
-        <label>每题限时</label>
+        <label id="timeLimitLabel">总时长</label>
         <input type="number" id="timeLimit" min="1" max="30" value="3" onchange="saveConfig()">
         <span style="font-size:11px;color:var(--text3)">分钟</span>
       </span>
@@ -540,8 +540,10 @@ function saveConfig() {
 function onTimeModeChange() {
   if (timeModeSelect.value === 'countdown') {
     timeLimitWrap.style.display = '';
+    document.getElementById('timeLimitLabel').textContent = '总时长';
   } else {
     timeLimitWrap.style.display = 'none';
+    document.getElementById('timeLimitLabel').textContent = '每题限时';.style.display = 'none';
   }
   saveConfig();
 }
@@ -567,7 +569,6 @@ function startSession() {
   sessionActive = true;
 
   btnStartSession.style.display = 'none';
-  btnNextQuestion.style.display = '';
   sessionSummary.style.display = 'none';
   updateQuestionDisplay();
   showToast(`练习开始，共 ${count} 题`);
@@ -583,33 +584,67 @@ function updateQuestionDisplay() {
   questionText.textContent = sessionQuestions[sessionIndex];
   btnNextQuestion.style.display = 'none';
   btnStart.disabled = false;
+  // Show next button if currently recording (so user can advance without stopping)
+  if (isRecording) {
+    btnNextQuestion.style.display = '';
+    btnNextQuestion.textContent = '下一题 →';
+  }
 }
 
 function nextQuestionInSession() {
-  // Move to next question
+  // Save current question's transcript to sessionAnswers
+  const currentQ = sessionQuestions[sessionIndex] || '';
+  const transcriptText = transcripts.map(s => s.text).join('\n');
+  const elapsed = config.timeMode === 'countdown'
+    ? (config.timeLimit * 60) - timerSeconds
+    : timerSeconds;
+  sessionAnswers.push({
+    question: currentQ,
+    transcript: transcriptText,
+    duration: Math.max(0, elapsed)
+  });
+
+  // Advance to next question (recording continues uninterrupted)
   sessionIndex++;
-  // Reset recording state for new question
+  // Reset transcripts for the new question only, recording keeps going
   transcripts = [];
   currentInterim = '';
-  timerSeconds = 0;
-  updateTimerDisplay();
   transcriptBody.innerHTML = '';
   transcriptEmpty.style.display = '';
-  previewVideo.style.display = '';
-  playbackVideo.style.display = 'none';
   btnDownload.disabled = true;
 
   updateQuestionDisplay();
+  showToast('已切换到下一题');
 }
 
 function finishSession() {
+  // If still recording, save current question then stop
+  if (isRecording) {
+    if (sessionIndex < sessionQuestions.length && sessionAnswers.length === sessionIndex) {
+      const currentQ = sessionQuestions[sessionIndex] || '';
+      const transcriptText = transcripts.map(s => s.text).join('\n');
+      const elapsed = config.timeMode === 'countdown'
+        ? (config.timeLimit * 60) - timerSeconds
+        : timerSeconds;
+      sessionAnswers.push({
+        question: currentQ,
+        transcript: transcriptText,
+        duration: Math.max(0, elapsed)
+      });
+    }
+    stopRecording();
+  } else {
+    showSessionComplete();
+  }
+}
+
+function showSessionComplete() {
   sessionActive = false;
   btnNextQuestion.style.display = 'none';
   btnStartSession.style.display = '';
   questionProgress.textContent = '';
   questionText.textContent = '练习完成！点击"开始练习"再来一轮';
 
-  // Show summary
   const totalTime = sessionAnswers.reduce((s, a) => s + a.duration, 0);
   let summaryHTML = `<h3>🎉 练习完成</h3><div class="summary-stats">`;
   summaryHTML += `共回答 ${sessionAnswers.length} 题 · 总用时 ${formatDuration(totalTime)}<br>`;
@@ -760,10 +795,6 @@ async function startRecording() {
           timerSeconds = 0;
           stopRecording();
           showToast('时间到，录制已自动停止');
-          if (sessionIndex + 1 < sessionQuestions.length) {
-            btnNextQuestion.style.display = '';
-            btnNextQuestion.textContent = '下一题 →';
-          }
           return;
         }
       } else {
@@ -776,6 +807,9 @@ async function startRecording() {
     updateTimerDisplay();
     transcriptEmpty.style.display = 'none';
     renderTranscript();
+    // Show next button while recording so user can advance between questions
+    btnNextQuestion.style.display = '';
+    btnNextQuestion.textContent = '下一题 →';
   } catch (err) {
     showToast('启动失败：' + err.message);
   }
@@ -808,9 +842,23 @@ function pauseRecording() {
 
 function stopRecording() {
   if (!isRecording) return;
+  // Save current question transcript if not saved yet (e.g. stopping mid-question)
+  if (sessionIndex < sessionQuestions.length && sessionAnswers.length === sessionIndex) {
+    const currentQ = sessionQuestions[sessionIndex] || '';
+    const transcriptText = transcripts.map(s => s.text).join('\n');
+    const elapsed = config.timeMode === 'countdown'
+      ? (config.timeLimit * 60) - timerSeconds
+      : timerSeconds;
+    sessionAnswers.push({
+      question: currentQ,
+      transcript: transcriptText,
+      duration: Math.max(0, elapsed)
+    });
+  }
   if (recognition) { try { recognition.stop(); } catch(e) {} }
   clearInterval(timerInterval);
   timerInterval = null;
+  btnNextQuestion.style.display = 'none';
   mediaRecorder.stop();
   isRecording = false;
   isPaused = false;
@@ -866,30 +914,30 @@ function saveRecording(url, blob) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  const elapsed = config.timeMode === 'countdown'
-    ? config.timeLimit * 60 - timerSeconds
-    : timerSeconds;
-  const durStr = formatDuration(Math.max(0, elapsed));
-  const transcriptText = transcripts.map(s => s.text).join('\n');
+  const totalTime = sessionAnswers.reduce((s, a) => s + a.duration, 0);
+  const durStr = formatDuration(Math.max(0, totalTime));
 
-  const currentQ = sessionQuestions[sessionIndex] || '';
+  // Build combined transcript with question markers
+  let combinedTranscript = '';
+  for (let i = 0; i < sessionAnswers.length; i++) {
+    combinedTranscript += `第${i+1}题：${sessionAnswers[i].question}\n`;
+    combinedTranscript += sessionAnswers[i].transcript || '（无转写内容）';
+    if (i < sessionAnswers.length - 1) combinedTranscript += '\n\n';
+  }
 
-  // Save answer for session
-  sessionAnswers.push({
-    question: currentQ,
-    transcript: transcriptText,
-    duration: Math.max(0, elapsed)
-  });
+  // Build question summary for history
+  const qSummary = sessionAnswers.map((a, i) => `Q${i+1}: ${a.question}`).join(' | ');
 
   const record = {
     id: Date.now(),
     date: `${dateStr} ${timeStr}`,
-    duration: Math.max(0, elapsed),
+    duration: Math.max(0, totalTime),
     durStr,
     url,
     blob,
-    transcript: transcriptText,
-    question: currentQ
+    transcript: combinedTranscript,
+    question: qSummary,
+    sessionAnswers: [...sessionAnswers]
   };
 
   recordingHistory.unshift(record);
@@ -900,17 +948,10 @@ function saveRecording(url, blob) {
   playbackVideo.src = url;
 
   btnDownload.disabled = false;
-  btnDownload._sessionData = { answers: sessionAnswers, totalTime: 0 };
+  btnDownload._sessionData = { answers: sessionAnswers, totalTime };
 
-  // Show next question button if there are more
-  if (sessionIndex + 1 < sessionQuestions.length) {
-    btnNextQuestion.style.display = '';
-    btnNextQuestion.textContent = '下一题 →';
-    showToast('录制已保存，点击"下一题"继续');
-  } else {
-    finishSession();
-    showToast('本轮练习已完成');
-  }
+  showSessionComplete();
+  showToast('录制已保存');
 }
 
 function renderHistory() {
@@ -1000,10 +1041,6 @@ refreshBankSelect();
 refreshBankUI();
 loadConfig();
 
-// Auto-open settings on first visit
-if (!localStorage.getItem('interview_config')) {
-  settingsPanel.classList.add('open');
-}
 </script>
 </body>
 </html>
