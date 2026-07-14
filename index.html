@@ -98,7 +98,7 @@
     display: flex; align-items: center; justify-content: center;
   }
   .camera-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
-#previewVideo { transform: scaleX(-1); }
+#previewVideo, #playbackVideo { transform: scaleX(-1); }
   .camera-placeholder {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 12px; color: var(--text3);
@@ -701,41 +701,59 @@ async function loadVideoForRecord(record) {
   return record;
 }
 
-// ----- Init -----
+// ----- Init (with token refresh) -----
 (async function initAuth() {
-  // Check existing session from stored token
   const savedToken = localStorage.getItem('sb_token');
   const savedRefresh = localStorage.getItem('sb_refresh');
   if (savedToken) {
     accessToken = savedToken;
     refreshToken = savedRefresh;
-    const { data: userData } = await sbApi('GET', '/auth/v1/user');
+    // Try using saved token
+    let { data: userData } = await sbApi('GET', '/auth/v1/user');
+    // If token expired, try refresh
+    if (!userData && savedRefresh) {
+      const refreshRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: savedRefresh })
+      });
+      if (refreshRes.ok) {
+        const tokens = await refreshRes.json();
+        accessToken = tokens.access_token;
+        refreshToken = tokens.refresh_token;
+        localStorage.setItem('sb_token', accessToken);
+        if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
+        const retry = await sbApi('GET', '/auth/v1/user');
+        userData = retry.data;
+      }
+    }
     if (userData && userData.id) {
       currentUser = userData;
       const localKey = localStorage.getItem('enc_key');
       if (localKey) {
-        encryptionKey = await importKey(localKey);
-      } else {
-        // Fetch key from profiles
+        try { encryptionKey = await importKey(localKey); }
+        catch(e) { localStorage.removeItem('enc_key'); }
+      }
+      if (!encryptionKey) {
         const { data: profile } = await sbApi('GET', '/rest/v1/profiles?select=encryption_key');
         let keyStr = (profile && profile.length > 0) ? profile[0].encryption_key : null;
         if (keyStr && keyStr.length > 10) {
           try { encryptionKey = await importKey(keyStr); localStorage.setItem('enc_key', keyStr); }
           catch(e) { keyStr = null; }
         }
-        if (!keyStr || keyStr.length <= 10) {
+        if (!encryptionKey) {
           encryptionKey = await generateEncryptionKey();
           keyStr = await exportKey(encryptionKey);
           localStorage.setItem('enc_key', keyStr);
-          await sbApi('POST', '/rest/v1/profiles', { id: session.user.id, gender: 'male', encryption_key: keyStr });
+          await sbApi('POST', '/rest/v1/profiles', { id: userData.id, gender: 'male', encryption_key: keyStr });
         }
       }
       await onAuthSuccess(currentUser);
-      // Store tokens for next visit
-      localStorage.setItem('sb_token', accessToken);
-      if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
       return;
     }
+    // Clear invalid tokens
+    localStorage.removeItem('sb_token');
+    localStorage.removeItem('sb_refresh');
   }
   document.getElementById('authOverlay').classList.remove('hidden');
 })();
