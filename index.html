@@ -717,10 +717,17 @@ async function loadVideoForRecord(record) {
         encryptionKey = await importKey(localKey);
       } else {
         // Fetch key from profiles
-        const { data: profile } = await sbApi('GET', `/rest/v1/profiles?select=encryption_key`);
-        if (profile && profile.length > 0 && profile[0].encryption_key) {
-          encryptionKey = await importKey(profile[0].encryption_key);
-          localStorage.setItem('enc_key', profile[0].encryption_key);
+        const { data: profile } = await sbApi('GET', '/rest/v1/profiles?select=encryption_key');
+        let keyStr = (profile && profile.length > 0) ? profile[0].encryption_key : null;
+        if (keyStr && keyStr.length > 10) {
+          try { encryptionKey = await importKey(keyStr); localStorage.setItem('enc_key', keyStr); }
+          catch(e) { keyStr = null; }
+        }
+        if (!keyStr || keyStr.length <= 10) {
+          encryptionKey = await generateEncryptionKey();
+          keyStr = await exportKey(encryptionKey);
+          localStorage.setItem('enc_key', keyStr);
+          await sbApi('POST', '/rest/v1/profiles', { id: session.user.id, gender: 'male', encryption_key: keyStr });
         }
       }
       await onAuthSuccess(currentUser);
