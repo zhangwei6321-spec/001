@@ -550,6 +550,8 @@ async function handleAuth() {
     accessToken = data.access_token;
     refreshToken = data.refresh_token;
     currentUser = data.user;
+    localStorage.setItem('sb_token', accessToken);
+    if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
     // Load encryption key from profiles
     const { data: profile } = await sbApi('GET', `/rest/v1/profiles?select=encryption_key`);
     if (profile && profile.length > 0 && profile[0].encryption_key) {
