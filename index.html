@@ -997,9 +997,15 @@ function nextQuestionInSession() {
   currentInterim = '';
   btnDownload.disabled = true;
 
-  // Restart speech recognition for clean question boundary
+  // Abort recognition immediately to prevent late results bleeding into next Q
   if (recognition) {
-    try { recognition.stop(); } catch(e) {}
+    try { recognition.abort(); } catch(e) {}
+    // Start fresh recognition session for the new question
+    setTimeout(() => {
+      if (isRecording && !isPaused) {
+        try { recognition.start(); } catch(e) {}
+      }
+    }, 150);
   }
 
   renderTranscript();
@@ -1190,7 +1196,7 @@ async function startRecording() {
     // Start fresh recognition session
     if (recognition) {
       try { recognition.abort(); } catch(e) {}
-      try { recognition.start(); } catch(e) {}
+      setTimeout(() => { try { recognition.start(); } catch(e) {} }, 100);
     }
 
     // Start timer
