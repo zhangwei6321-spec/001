@@ -598,7 +598,7 @@ function toggleSettings() {
 }
 
 // ============ Session ============
-function startSession() {
+async function startSession() {
   const bank = questionBanks[currentBank] || [];
   if (bank.length === 0) {
     showToast('当前题库为空');
@@ -612,10 +612,14 @@ function startSession() {
   sessionAnswers = [];
   sessionActive = true;
 
-  // Reset camera area for new session (in case previous playback was showing)
+  // Reset camera area and pre-init camera for persistent permission
   previewVideo.style.display = '';
   playbackVideo.style.display = 'none';
   cameraPlaceholder.style.display = '';
+  // Initialize camera once so permission is granted and remembered
+  if (!mediaStream) {
+    try { await initCamera(); } catch(e) {}
+  }
 
   btnStartSession.style.display = 'none';
   sessionSummary.style.display = 'none';
