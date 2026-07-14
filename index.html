@@ -193,10 +193,13 @@
     display: flex; align-items: center; gap: 6px;
   }
   .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item-block { margin-bottom: 6px; }
+  .history-item-block .history-item { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .history-item-block:has(.history-transcript[style*="display: block"]) .history-item { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
   .history-item {
     display: flex; align-items: center; gap: 14px; padding: 10px 14px;
-    background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border);
-    font-size: 13px; flex-wrap: wrap;
+    background: var(--surface2); border: 1px solid var(--border);
+    font-size: 13px; flex-wrap: wrap; border-radius: var(--radius-sm);
   }
   .history-item .h-time { font-weight: 600; color: var(--text); min-width: 50px; }
   .history-item .h-date { color: var(--text3); flex: 1; font-size: 12px; min-width: 120px; }
@@ -921,6 +924,11 @@ timeLimitWrap.style.display = 'none';
 
 // ============ Settings Toggle ============
 let faceEffectOn = false;
+function toggleTranscript(id) {
+  const el = document.getElementById('htrans-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function toggleFaceEffect() {
   faceEffectOn = !faceEffectOn;
   const overlay = document.getElementById('faceOverlay');
@@ -1392,13 +1400,17 @@ function renderHistory() {
     return;
   }
   historyList.innerHTML = recordingHistory.map(r => `
-    <div class="history-item">
-      <span class="h-time">${r.durStr}</span>
-      <span class="h-date">${r.date}</span>
-      <span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.question)}</span>
-      <button class="btn btn-ghost btn-xs" onclick="playHistory(${r.id})">回放</button>
-      <button class="btn btn-ghost btn-xs" onclick="downloadHistoryVideo(${r.id})">下载</button>
-      <button class="btn btn-ghost btn-xs" onclick="deleteRecording(${r.id})" style="color:var(--red)">删除</button>
+    <div class="history-item-block" id="hitem-${r.id}">
+      <div class="history-item">
+        <span class="h-time">${r.durStr}</span>
+        <span class="h-date">${r.date}</span>
+        <span style="font-size:11px;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.question)}</span>
+        <button class="btn btn-ghost btn-xs" onclick="playHistory(${r.id})">回放</button>
+        <button class="btn btn-ghost btn-xs" onclick="downloadHistoryVideo(${r.id})">下载</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleTranscript(${r.id})">文字稿</button>
+        <button class="btn btn-ghost btn-xs" onclick="deleteRecording(${r.id})" style="color:var(--red)">删除</button>
+      </div>
+      <div class="history-transcript" id="htrans-${r.id}" style="display:none;padding:8px 14px;font-size:12px;color:var(--text2);line-height:1.7;white-space:pre-wrap;background:var(--bg);border-radius:0 0 8px 8px;border:1px solid var(--border);border-top:none">${escapeHtml(r.transcript || '（无文字稿）')}</div>
     </div>
   `).join('');
 }
