@@ -230,69 +230,10 @@
   }
   .session-summary h3 { font-size: 16px; margin-bottom: 6px; color: var(--green); }
   .session-summary .summary-stats { font-size: 13px; color: var(--text2); line-height: 1.8; }
-
-  /* ===== Auth ===== */
-  .auth-overlay {
-    position: fixed; inset: 0; background: var(--bg); z-index: 1000;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .auth-overlay.hidden { display: none; }
-  .auth-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 32px 28px; width: 360px; max-width: 90vw;
-  }
-  .auth-card h2 { font-size: 20px; margin-bottom: 20px; text-align: center; }
-  .auth-card .field { margin-bottom: 14px; }
-  .auth-card label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
-  .auth-card input, .auth-card select {
-    width: 100%; padding: 10px 12px; border-radius: 6px;
-    background: var(--bg); color: var(--text); border: 1px solid var(--border);
-    font-size: 14px; font-family: inherit; outline: none;
-  }
-  .auth-card input:focus, .auth-card select:focus { border-color: var(--blue); }
-  .auth-card .gender-row { display: flex; gap: 10px; }
-  .auth-card .gender-row select { flex: 1; }
-  .auth-card .btn-full {
-    width: 100%; padding: 11px; border-radius: 6px; font-size: 15px; font-weight: 600;
-    cursor: pointer; border: none; font-family: inherit; margin-top: 6px;
-  }
-  .auth-card .btn-primary { background: var(--blue); color: #fff; }
-  .auth-card .btn-primary:hover { background: #4a8de6; }
-  .auth-card .switch { text-align: center; margin-top: 14px; font-size: 13px; color: var(--text3); }
-  .auth-card .switch a { color: var(--blue); cursor: pointer; text-decoration: none; }
-  .auth-card .error { color: var(--red); font-size: 12px; margin-top: 6px; display: none; }
-  .user-bar {
-    display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text2);
-  }
-  .user-bar .logout-btn {
-    background: none; border: 1px solid var(--border); color: var(--text3);
-    padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-family: inherit;
-  }
-  .user-bar .logout-btn:hover { border-color: var(--red); color: var(--red); }
-  .sync-badge {
-    font-size: 10px; padding: 2px 7px; border-radius: 3px;
-  }
-  .sync-badge.ok { background: rgba(52,211,153,0.15); color: var(--green); }
-  .sync-badge.err { background: rgba(248,113,113,0.15); color: var(--red); }
-
 </style>
+
 </head>
 <body>
-
-<div class="auth-overlay" id="authOverlay">
-  <div class="auth-card">
-    <h2 id="authTitle">登录</h2>
-    <div class="field"><label>邮箱</label><input type="email" id="authEmail" placeholder="your@email.com"></div>
-    <div class="field"><label>密码</label><input type="password" id="authPassword" placeholder="输入密码"></div>
-    <div class="field" id="genderField" style="display:none">
-      <label>性别</label>
-      <select id="authGender"><option value="male">男</option><option value="female">女</option></select>
-    </div>
-    <div class="error" id="authError"></div>
-    <button class="btn-full btn-primary" id="authBtn" onclick="handleAuth()">登录</button>
-    <div class="switch"><a id="authSwitch" onclick="toggleAuthMode()">还没有账号？注册</a></div>
-  </div>
-</div>
 
 <div class="header">
   <h1>🎤 协理员面试练习</h1>
@@ -305,15 +246,6 @@
     <div class="user-bar" id="userBar" style="display:none">
       <span id="userEmail"></span>
       <span class="sync-badge ok" id="syncBadge">☁ 已同步</span>
-      <button class="logout-btn" onclick="showChangePwd()">改密</button>
-      <button class="logout-btn" onclick="handleLogout()">退出</button>
-    </div>
-    <div class="pwd-change" id="pwdChange" style="display:none;margin-top:6px;display:none;flex;gap:6px;align-items:center">
-      <input type="password" id="oldPwd" placeholder="旧密码" style="width:90px;padding:3px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:11px">
-      <input type="password" id="newPwd" placeholder="新密码" style="width:90px;padding:3px 6px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-size:11px">
-      <button class="logout-btn" onclick="changePassword()" style="color:var(--green);border-color:var(--green)">确认</button>
-      <span id="pwdMsg" style="font-size:10px"></span>
-    </div>
   </div>
 </div>
 <div class="browser-warn" id="browserWarn">
@@ -451,315 +383,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ================================================================
-// SUPABASE REST API + AUTH + ENCRYPTION + SYNC
-// ================================================================
-const SUPABASE_URL = 'https://axhrtuskzezjkqyzbygq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_LzpgXkyCO3Y-aBEMaIBHJQ_raw-mU1u';
-let accessToken = null;
-let refreshToken = null;
-let encryptionKey = null;
-let currentUser = null;
-
-// ----- REST helpers -----
-function authHeaders() {
-  const h = { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' };
-  if (accessToken) h['Authorization'] = 'Bearer ' + accessToken;
-  return h;
-}
-
-async function sbApi(method, path, body) {
-  const opts = { method, headers: authHeaders() };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(SUPABASE_URL + path, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    return { error: { message: err.msg || err.message || 'Request failed', status: res.status } };
-  }
-  return { data: await res.json().catch(() => null), error: null };
-}
-
-// ----- Auth UI -----
-let authMode = 'login';
-function toggleAuthMode() {
-  authMode = authMode === 'login' ? 'register' : 'login';
-  document.getElementById('authTitle').textContent = authMode === 'login' ? '登录' : '注册';
-  document.getElementById('authBtn').textContent = authMode === 'login' ? '登录' : '注册';
-  document.getElementById('authSwitch').textContent = authMode === 'login' ? '还没有账号？注册' : '已有账号？登录';
-  document.getElementById('genderField').style.display = authMode === 'register' ? '' : 'none';
-  document.getElementById('authError').style.display = 'none';
-}
-
-async function handleAuth() {
-  try {
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  const errEl = document.getElementById('authError');
-  errEl.style.display = 'none';
-  console.log('[auth] mode:', authMode, 'email:', email);
-  if (!email || !password) { errEl.textContent = '请填写邮箱和密码'; errEl.style.display = 'block'; return; }
-
-  if (authMode === 'register') {
-    const gender = document.getElementById('authGender').value;
-    const rawKey = await generateEncryptionKey();
-    const exportedKey = await exportKey(rawKey);
-    // Sign up via REST
-    const { data, error } = await sbApi('POST', '/auth/v1/signup', {
-      email, password,
-      data: { gender, encryption_key: exportedKey }
-    });
-    if (error) {
-      const em = error.message || '';
-      if (em.includes('already') || em.includes('registered') || em.includes('exists')) {
-        errEl.textContent = '该邮箱已注册！切到登录模式直接登录';
-      } else if (em.includes('password') || em.includes('weak')) {
-        errEl.textContent = '密码强度不够，至少6位字符';
-      } else {
-        errEl.textContent = '注册失败：' + (em || '请稍后重试');
-      }
-      errEl.style.display = 'block'; return;
-    }
-    encryptionKey = rawKey;
-    localStorage.setItem('enc_key', exportedKey);
-    if (data.access_token) {
-      accessToken = data.access_token;
-      refreshToken = data.refresh_token;
-      currentUser = data.user;
-      await onAuthSuccess(currentUser);
-      localStorage.setItem('sb_token', accessToken);
-      if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
-    } else if (data.user) {
-      // User created but no token - try auto sign-in
-      const { data: signData, error: signErr } = await sbApi('POST', '/auth/v1/token?grant_type=password', { email, password });
-      if (signData?.access_token) {
-        accessToken = signData.access_token;
-        refreshToken = signData.refresh_token;
-        currentUser = signData.user;
-        await onAuthSuccess(currentUser);
-        localStorage.setItem('sb_token', accessToken);
-        if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
-      } else {
-        errEl.textContent = '注册成功！请先去邮箱点击确认链接，再回来登录。如已确认请直接切到登录模式。';
-        errEl.style.display = 'block';
-      }
-    }
-  } else {
-    // Sign in via REST
-    const { data, error } = await sbApi('POST', '/auth/v1/token?grant_type=password', { email, password });
-    if (error) { errEl.textContent = '密码错误，请重新输入'; errEl.style.display = 'block'; return; }
-    accessToken = data.access_token;
-    refreshToken = data.refresh_token;
-    currentUser = data.user;
-    localStorage.setItem('sb_token', accessToken);
-    if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
-    // Load encryption key from profiles
-    const { data: profile } = await sbApi('GET', `/rest/v1/profiles?select=encryption_key`);
-    if (profile && profile.length > 0 && profile[0].encryption_key) {
-      encryptionKey = await importKey(profile[0].encryption_key);
-      localStorage.setItem('enc_key', profile[0].encryption_key);
-    }
-    await onAuthSuccess(currentUser);
-  }
-  } catch(e) {
-    console.error('[auth] error:', e);
-    const errEl = document.getElementById('authError');
-    errEl.textContent = '错误: ' + (e.message || e);
-    errEl.style.display = 'block';
-  }
-}
-
-async function handleLogout() {
-  if (accessToken) {
-    await sbApi('POST', '/auth/v1/logout');
-  }
-  accessToken = null;
-  refreshToken = null;
-  encryptionKey = null;
-  currentUser = null;
-  localStorage.removeItem('enc_key');
-  recordingHistory = [];
-  renderHistory();
-  document.getElementById('authOverlay').classList.remove('hidden');
-  document.getElementById('userBar').style.display = 'none';
-}
-
-async function onAuthSuccess(user) {
-  if (!user) return;
-  currentUser = user;
-  document.getElementById('authOverlay').classList.add('hidden');
-  document.getElementById('userBar').style.display = '';
-  document.getElementById('userEmail').textContent = user.email;
-  await loadRecordingsFromCloud();
-}
-
-// ----- Encryption (Web Crypto API, AES-GCM) -----
-async function generateEncryptionKey() {
-  // Use getRandomValues + importKey instead of generateKey to avoid
-  // browser extension conflicts with async crypto message channels
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-}
-
-async function exportKey(key) {
-  const raw = await crypto.subtle.exportKey('raw', key);
-  return btoa(String.fromCharCode(...new Uint8Array(raw)));
-}
-
-async function importKey(base64Key) {
-  const raw = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
-  return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-}
-
-async function encryptText(key, plaintext) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-  return {
-    iv: btoa(String.fromCharCode(...iv)),
-    data: btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
-  };
-}
-
-async function decryptText(key, ivB64, dataB64) {
-  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
-  const ciphertext = Uint8Array.from(atob(dataB64), c => c.charCodeAt(0));
-  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-  return new TextDecoder().decode(decrypted);
-}
-
-// ----- Cloud Sync -----
-async function uploadRecordingToCloud(record) {
-  if (!encryptionKey || !currentUser) return;
-  try {
-    const transcriptEnc = await encryptText(encryptionKey, record.transcript || '');
-    const metadata = JSON.stringify({
-      question: record.question, duration: record.duration,
-      durStr: record.durStr, date: record.date, sessionAnswers: record.sessionAnswers
-    });
-    const metadataEnc = await encryptText(encryptionKey, metadata);
-
-    // Upload video
-    let videoPath = null;
-    if (record.blob && record.blob.size > 0) {
-      const fileName = `${currentUser.id}/${record.id}.webm`;
-      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${fileName}`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'video/webm' },
-        body: record.blob
-      });
-      if (res.ok) videoPath = fileName;
-    }
-
-    // Insert row
-    const { error } = await sbApi('POST', '/rest/v1/recordings', {
-      id: record.id, user_id: currentUser.id,
-      encrypted_transcript: transcriptEnc.data,
-      encrypted_metadata: metadataEnc.data,
-      video_storage_path: videoPath,
-      iv: transcriptEnc.iv,
-      created_at: new Date().toISOString()
-    });
-    if (error) console.warn('Sync insert error:', error);
-    else document.getElementById('syncBadge').className = 'sync-badge ok';
-  } catch (e) {
-    console.warn('Sync error:', e);
-    document.getElementById('syncBadge').className = 'sync-badge err';
-  }
-}
-
-async function loadRecordingsFromCloud() {
-  if (!encryptionKey || !currentUser) return;
-  try {
-    const { data: rows, error } = await sbApi('GET',
-      `/rest/v1/recordings?select=*&user_id=eq.${currentUser.id}&order=created_at.desc`);
-    if (error) { console.warn('Load error:', error); return; }
-    recordingHistory = [];
-    for (const row of (rows || [])) {
-      try {
-        const transcript = await decryptText(encryptionKey, row.iv, row.encrypted_transcript);
-        const metadataStr = row.encrypted_metadata ? await decryptText(encryptionKey, row.iv, row.encrypted_metadata) : '{}';
-        const meta = JSON.parse(metadataStr);
-        recordingHistory.push({
-          id: row.id, date: meta.date || '', duration: meta.duration || 0,
-          durStr: meta.durStr || '', transcript: transcript,
-          question: meta.question || '', sessionAnswers: meta.sessionAnswers || [],
-          url: row.video_storage_path || null, blob: null, _storagePath: row.video_storage_path
-        });
-      } catch (e) { console.warn('Decrypt error:', e); }
-    }
-    renderHistory();
-  } catch (e) { console.warn('Load error:', e); }
-}
-
-async function loadVideoForRecord(record) {
-  if (record._storagePath && !record.blob) {
-    try {
-      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${record._storagePath}`, {
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken }
-      });
-      if (res.ok) record.blob = await res.blob();
-    } catch(e) {}
-  }
-  return record;
-}
-
-// ----- Init (with token refresh) -----
-(async function initAuth() {
-  const savedToken = localStorage.getItem('sb_token');
-  const savedRefresh = localStorage.getItem('sb_refresh');
-  if (savedToken) {
-    accessToken = savedToken;
-    refreshToken = savedRefresh;
-    // Try using saved token
-    let { data: userData } = await sbApi('GET', '/auth/v1/user');
-    // If token expired, try refresh
-    if (!userData && savedRefresh) {
-      const refreshRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: savedRefresh })
-      });
-      if (refreshRes.ok) {
-        const tokens = await refreshRes.json();
-        accessToken = tokens.access_token;
-        refreshToken = tokens.refresh_token;
-        localStorage.setItem('sb_token', accessToken);
-        if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
-        const retry = await sbApi('GET', '/auth/v1/user');
-        userData = retry.data;
-      }
-    }
-    if (userData && userData.id) {
-      currentUser = userData;
-      const localKey = localStorage.getItem('enc_key');
-      if (localKey) {
-        try { encryptionKey = await importKey(localKey); }
-        catch(e) { localStorage.removeItem('enc_key'); }
-      }
-      if (!encryptionKey) {
-        const { data: profile } = await sbApi('GET', '/rest/v1/profiles?select=encryption_key');
-        let keyStr = (profile && profile.length > 0) ? profile[0].encryption_key : null;
-        if (keyStr && keyStr.length > 10) {
-          try { encryptionKey = await importKey(keyStr); localStorage.setItem('enc_key', keyStr); }
-          catch(e) { keyStr = null; }
-        }
-        if (!encryptionKey) {
-          encryptionKey = await generateEncryptionKey();
-          keyStr = await exportKey(encryptionKey);
-          localStorage.setItem('enc_key', keyStr);
-          await sbApi('POST', '/rest/v1/profiles', { id: userData.id, gender: 'male', encryption_key: keyStr });
-        }
-      }
-      await onAuthSuccess(currentUser);
-      return;
-    }
-    // Clear invalid tokens
-    localStorage.removeItem('sb_token');
-    localStorage.removeItem('sb_refresh');
-  }
-  document.getElementById('authOverlay').classList.remove('hidden');
-})();
-
 // ================================================================
 // ORIGINAL APP CODE (modified for cloud sync)
 // ================================================================
@@ -1417,8 +1040,6 @@ function saveRecording(url, blob) {
 
   showSessionComplete();
   showToast('录制已保存');
-  // Sync to cloud
-  if (currentUser) uploadRecordingToCloud(record);
 }
 
 function renderHistory() {
@@ -1442,10 +1063,9 @@ function renderHistory() {
   `).join('');
 }
 
-async function playHistory(id) {
-  let record = recordingHistory.find(r => r.id === id);
+function playHistory(id) {
+  const record = recordingHistory.find(r => r.id === id);
   if (!record) return;
-  record = await loadVideoForRecord(record);
   previewVideo.style.display = 'none';
   playbackVideo.style.display = 'block';
   if (record.blob) {
@@ -1461,23 +1081,10 @@ async function playHistory(id) {
   showToast('正在回放 ' + record.durStr);
 }
 
-async function deleteRecording(id) {
+function deleteRecording(id) {
   const idx = recordingHistory.findIndex(r => r.id === id);
   if (idx === -1) return;
   if (!confirm('确定删除这条录制记录？')) return;
-  const record = recordingHistory[idx];
-  // Delete from cloud
-  if (currentUser && accessToken) {
-    try {
-      await sbApi('DELETE', `/rest/v1/recordings?id=eq.${id}`);
-      if (record._storagePath) {
-        await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${record._storagePath}`, {
-          method: 'DELETE',
-          headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken}
-        });
-      }
-    } catch(e) { console.warn('Delete from cloud error:', e); }
-  }
   recordingHistory.splice(idx, 1);
   renderHistory();
   showToast('已删除');
@@ -1525,41 +1132,6 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
-}
-
-function showChangePwd() {
-  const el = document.getElementById('pwdChange');
-  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
-}
-
-async function changePassword() {
-  const oldPwd = document.getElementById('oldPwd').value;
-  const newPwd = document.getElementById('newPwd').value;
-  const msgEl = document.getElementById('pwdMsg');
-  if (!oldPwd || !newPwd) { msgEl.textContent = '请填写新旧密码'; msgEl.style.color = 'var(--red)'; return; }
-  if (newPwd.length < 6) { msgEl.textContent = '新密码至少6位'; msgEl.style.color = 'var(--red)'; return; }
-  try {
-    // Verify old password first
-    const { data: vfy, error: vfyErr } = await sbApi('POST', '/auth/v1/token?grant_type=password', { email: currentUser.email, password: oldPwd });
-    if (vfyErr) { msgEl.textContent = '旧密码错误'; msgEl.style.color = 'var(--red)'; return; }
-    // Update to new password
-    const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
-      method: 'PUT',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: newPwd })
-    });
-    if (res.ok) {
-      msgEl.textContent = '密码已修改';
-      msgEl.style.color = 'var(--green)';
-      document.getElementById('oldPwd').value = '';
-      document.getElementById('newPwd').value = '';
-      setTimeout(() => { document.getElementById('pwdChange').style.display = 'none'; }, 1500);
-    } else {
-      const err = await res.json().catch(() => ({}));
-      msgEl.textContent = '修改失败：' + (err.msg || '请重试');
-      msgEl.style.color = 'var(--red)';
-    }
-  } catch(e) { msgEl.textContent = '错误：' + e.message; msgEl.style.color = 'var(--red)'; }
 }
 
 function showToast(msg) {
