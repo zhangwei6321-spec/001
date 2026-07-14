@@ -98,6 +98,7 @@
     display: flex; align-items: center; justify-content: center;
   }
   .camera-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
+#previewVideo { transform: scaleX(-1); }
   .camera-placeholder {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 12px; color: var(--text3);
@@ -376,6 +377,8 @@
         </svg>
         <span>点击"开始录制"启动摄像头</span>
       </div>
+      <canvas id="faceCanvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2"></canvas>
+      <div class="face-overlay" id="faceOverlay" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse 30% 40% at 50% 35%, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)"></div>
       <div class="rec-indicator" id="recIndicator">
         <span class="rec-dot"></span>录制中
       </div>
@@ -389,6 +392,10 @@
       <button class="btn btn-pause" id="btnPause" onclick="pauseRecording()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
         暂停
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btnFaceToggle" onclick="toggleFaceEffect()" title="拟态特效">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+        拟态
       </button>
       <button class="btn btn-stop" id="btnStop" onclick="stopRecording()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
@@ -903,6 +910,24 @@ timeLimitWrap.style.display = 'none';
 }
 
 // ============ Settings Toggle ============
+let faceEffectOn = false;
+function toggleFaceEffect() {
+  faceEffectOn = !faceEffectOn;
+  const overlay = document.getElementById('faceOverlay');
+  const btn = document.getElementById('btnFaceToggle');
+  if (faceEffectOn) {
+    overlay.style.display = '';
+    btn.style.borderColor = 'var(--purple)';
+    btn.style.color = 'var(--purple)';
+    showToast('拟态特效已开启');
+  } else {
+    overlay.style.display = 'none';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    showToast('拟态特效已关闭');
+  }
+}
+
 function toggleSettings() {
   settingsPanel.classList.toggle('open');
 }
@@ -1063,9 +1088,9 @@ function initSpeechRecognition() {
   };
 
   recognition.onend = () => {
-    // Only auto-restart if we're on a valid question (not past the end)
+    // Immediately restart to minimize transcription gaps
     if (isRecording && !isPaused && sessionIndex < sessionQuestions.length) {
-      try { recognition.start(); } catch(e) {}
+      setTimeout(() => { try { recognition.start(); } catch(e) {} }, 50);
     }
   };
 
@@ -1357,6 +1382,7 @@ function renderHistory() {
       <span style="font-size:11px;color:var(--text3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.question)}</span>
       <button class="btn btn-ghost btn-xs" onclick="playHistory(${r.id})">回放</button>
       <button class="btn btn-ghost btn-xs" onclick="downloadHistoryVideo(${r.id})">下载</button>
+      <button class="btn btn-ghost btn-xs" onclick="deleteRecording(${r.id})" style="color:var(--red)">删除</button>
     </div>
   `).join('');
 }
@@ -1380,16 +1406,26 @@ async function playHistory(id) {
   showToast('正在回放 ' + record.durStr);
 }
 
-async function downloadHistoryVideo(id) {
-  let record = recordingHistory.find(r => r.id === id);
-  if (!record) { showToast('记录不存在'); return; }
-  record = await loadVideoForRecord(record);
-  if (!record.blob) { showToast('视频数据不可用'); return; }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(record.blob);
-  a.download = '面试练习-' + record.date.replace(/[\/\s:]/g, '-') + '.webm';
-  a.click();
-  showToast('视频下载中');
+async function deleteRecording(id) {
+  const idx = recordingHistory.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  if (!confirm('确定删除这条录制记录？')) return;
+  const record = recordingHistory[idx];
+  // Delete from cloud
+  if (currentUser && accessToken) {
+    try {
+      await sbApi('DELETE', `/rest/v1/recordings?id=eq.${id}`);
+      if (record._storagePath) {
+        await fetch(`${SUPABASE_URL}/storage/v1/object/recordings/${record._storagePath}`, {
+          method: 'DELETE',
+          headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + accessToken}
+        });
+      }
+    } catch(e) { console.warn('Delete from cloud error:', e); }
+  }
+  recordingHistory.splice(idx, 1);
+  renderHistory();
+  showToast('已删除');
 }
 
 function downloadFullTranscript() {
