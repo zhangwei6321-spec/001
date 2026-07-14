@@ -355,7 +355,16 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         实时转写
       </h3>
-      <span style="font-size:11px;color:var(--text3)" id="langLabel">zh-CN</span>
+      <span style="font-size:11px;color:var(--text3)">
+        <select id="langSelect" onchange="changeLang()" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:11px;font-family:inherit">
+          <option value="zh-CN">普通话 (zh-CN)</option>
+          <option value="zh-Hans-CN">简体中文 (zh-Hans-CN)</option>
+          <option value="cmn-Hans-CN">汉语通用 (cmn-Hans-CN)</option>
+          <option value="zh-HK">粤语 (zh-HK)</option>
+          <option value="zh-TW">台湾国语 (zh-TW)</option>
+          <option value="yue-Hant-HK">粤语繁中 (yue-HK)</option>
+        </select>
+      </span>
     </div>
     <div class="transcript-body" id="transcriptBody">
       <div class="transcript-empty" id="transcriptEmpty">
@@ -593,12 +602,22 @@ function toggleFaceEffect() {
   }
 }
 
+function changeLang() {
+  const lang = document.getElementById('langSelect').value;
+  localStorage.setItem('speech_lang', lang);
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition.lang = lang;
+    showToast('语言切换到 ' + lang);
+  }
+}
+
 function toggleSettings() {
   settingsPanel.classList.toggle('open');
 }
 
 // ============ Session ============
-async function startSession() {
+function startSession() {
   const bank = questionBanks[currentBank] || [];
   if (bank.length === 0) {
     showToast('当前题库为空');
@@ -612,14 +631,10 @@ async function startSession() {
   sessionAnswers = [];
   sessionActive = true;
 
-  // Reset camera area and pre-init camera for persistent permission
+  // Reset camera area for new session (in case previous playback was showing)
   previewVideo.style.display = '';
   playbackVideo.style.display = 'none';
   cameraPlaceholder.style.display = '';
-  // Initialize camera once so permission is granted and remembered
-  if (!mediaStream) {
-    try { await initCamera(); } catch(e) {}
-  }
 
   btnStartSession.style.display = 'none';
   sessionSummary.style.display = 'none';
@@ -736,7 +751,8 @@ function initSpeechRecognition() {
     return;
   }
   recognition = new SR();
-  recognition.lang = 'zh-CN';
+  recognition.lang = localStorage.getItem('speech_lang') || 'zh-CN';
+  document.getElementById('langSelect').value = recognition.lang;
   recognition.continuous = true;
   recognition.interimResults = true;
 
