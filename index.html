@@ -509,6 +509,20 @@ async function handleAuth() {
       await onAuthSuccess(currentUser);
       localStorage.setItem('sb_token', accessToken);
       if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
+    } else if (data.user) {
+      // User created but no token - try auto sign-in
+      const { data: signData, error: signErr } = await sbApi('POST', '/auth/v1/token?grant_type=password', { email, password });
+      if (signData?.access_token) {
+        accessToken = signData.access_token;
+        refreshToken = signData.refresh_token;
+        currentUser = signData.user;
+        await onAuthSuccess(currentUser);
+        localStorage.setItem('sb_token', accessToken);
+        if (refreshToken) localStorage.setItem('sb_refresh', refreshToken);
+      } else {
+        errEl.textContent = '注册成功！请先去邮箱点击确认链接，再回来登录。如已确认请直接切到登录模式。';
+        errEl.style.display = '';
+      }
     }
   } else {
     // Sign in via REST
