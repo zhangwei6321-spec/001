@@ -46,3 +46,32 @@ git clone https://github.com/zhangwei6321-spec/001.git
 cd 001
 open index.html
 ```
+
+
+---
+
+# 🧧 算得准
+
+> 在线算命大全 — 综合八字、紫微、称骨、星座、生肖、塔罗等 16 种传统测算。
+
+🔗 在线访问：[zhangwei6321-spec.github.io/001/suandezhun/](https://zhangwei6321-spec.github.io/001/suandezhun/)
+
+## ✨ 功能
+
+- 🏮 **16 大算命门类** — 八字命理 / 紫微斗数 / 称骨算命 / 五行测算 / 姓名解析 / 塔罗牌 / 求签占卜 / 周公解梦 / 六爻占卜 / 面相分析 / 手相解读 / 每日运势 / 星座运势 / 生肖运势 / 姻缘配对 / 财运预测 / 风水运势
+- 📅 **农历支持** — 1900-2100 年农历转换，支持闰月选择
+- 📍 **真太阳时** — 选择省市县自动修正出生时辰
+- 💾 **个人资料一键共享** — 保存一次，所有模块自动填入并测算
+- ⚖ **称骨算命** — 袁天罡称骨法，节气定月，含经典批语
+
+## 🛠 技术栈
+
+纯 HTML / CSS / JavaScript，单文件实现，无框架依赖。
+
+## 📂 本地使用
+
+```bash
+cd suandezhun
+python3 -m http.server 8910
+open http://localhost:8910
+```
